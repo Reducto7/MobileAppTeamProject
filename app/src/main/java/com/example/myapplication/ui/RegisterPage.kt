@@ -43,7 +43,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
     var password by rememberSaveable { mutableStateOf("") }
     var isDialogVisible by rememberSaveable { mutableStateOf(false) }
     var isRegistrationSuccessful by rememberSaveable { mutableStateOf(false) }
-
+    var dialogMessage by rememberSaveable { mutableStateOf("") }
 
     CenterAlignedTopAppBar(
         title = { Text("Register Page", color = Color.White) },
@@ -82,7 +82,6 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
             onValueChange = { password = it },
             label = { Text("Password") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            //visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
@@ -92,9 +91,15 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
 
         Button(
             onClick = {
-                registerUser(email, password) { success ->
-                    isRegistrationSuccessful = success
+                if (email.isBlank() || password.isBlank()) {
+                    dialogMessage = "邮箱和密码不能为空。"
                     isDialogVisible = true
+                } else {
+                    registerUser(email, password) { success ->
+                        isRegistrationSuccessful = success
+                        dialogMessage = if (success) "您已成功注册！" else "注册失败，请重试。"
+                        isDialogVisible = true
+                    }
                 }
             },
             modifier = Modifier
@@ -109,7 +114,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
 
     if (isDialogVisible) {
         RegisterDialog(
-            isSuccessful = isRegistrationSuccessful,
+            message = dialogMessage,
             onDismiss = {
                 isDialogVisible = false
                 if (isRegistrationSuccessful) {
@@ -118,9 +123,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
             }
         )
     }
-
 }
-
 
 fun registerUser(email: String, password: String, onResult: (Boolean) -> Unit) {
     val auth = FirebaseAuth.getInstance()
@@ -129,17 +132,15 @@ fun registerUser(email: String, password: String, onResult: (Boolean) -> Unit) {
     }
 }
 
-
 @Composable
 fun RegisterDialog(
-    isSuccessful: Boolean,
+    message: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val message = if (isSuccessful) "您已成功注册！" else "注册失败，请重试。"
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = if (isSuccessful) "注册成功" else "注册失败") },
+        title = { Text(text = if (message == "您已成功注册！") "注册成功" else "注册失败") },
         text = { Text(text = message) },
         confirmButton = {
             Button(onClick = onDismiss) {

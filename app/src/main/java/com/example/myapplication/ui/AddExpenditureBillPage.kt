@@ -55,10 +55,10 @@ fun AddExpenditurePage(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
                 navigationIcon = {
-                    IconButton(onClick = {navController.popBackStack()}) {
-                        androidx.compose.material3.Icon(
+                    IconButton(onClick = {navController.navigate("addNewBill") }) {
+                        Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Some Description",
+                            contentDescription = "back",
                             tint = Color.White,
                         )
                     }
@@ -80,7 +80,7 @@ fun AddExpenditurePage(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(32.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
