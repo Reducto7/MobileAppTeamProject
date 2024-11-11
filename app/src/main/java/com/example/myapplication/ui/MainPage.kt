@@ -60,7 +60,7 @@ fun MainPage(navController: NavController, modifier: Modifier = Modifier) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {},
+                onClick = {navController.navigate("addNewBill")},
                 containerColor = Color.Black,
                 contentColor = Color.White
             ) {
