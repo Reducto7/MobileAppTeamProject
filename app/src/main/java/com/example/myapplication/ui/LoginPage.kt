@@ -83,7 +83,7 @@ fun LoginPage(navController: NavController, modifier: Modifier = Modifier, conte
             onValueChange = { password = it },
             label = { Text("Password") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            //visualTransformation = PasswordVisualTransformation(),
+            //visualTransformation = PasswordVisualTransformation()
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp)
