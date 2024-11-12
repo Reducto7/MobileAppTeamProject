@@ -15,7 +15,7 @@ import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.teamproject.ui.AddNewBillPage
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
-
+//test
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
