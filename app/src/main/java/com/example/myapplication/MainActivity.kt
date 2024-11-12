@@ -12,8 +12,6 @@ import com.example.myapplication.ui.LoginPage
 import com.example.myapplication.ui.MainPage
 import com.example.myapplication.ui.RegisterPage
 import com.example.myapplication.ui.theme.MyApplicationTheme
-import com.example.teamproject.ui.AddExpenditurePage
-import com.example.teamproject.ui.AddIncomeBillPage
 import com.example.teamproject.ui.AddNewBillPage
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
@@ -44,12 +42,6 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("addNewBill") {
                         AddNewBillPage(navController)
-                    }
-                    composable("addExpenditureBill") {
-                        AddExpenditurePage(navController)
-                    }
-                    composable("addIncomeBill") {
-                        AddIncomeBillPage(navController)
                     }
                 }
             }
