@@ -40,7 +40,7 @@ fun MainPage(navController: NavController, modifier: Modifier = Modifier) {
                     )
                 }
                 Spacer(modifier = Modifier.width(70.dp))
-                IconButton(onClick = {}) {
+                IconButton(onClick = {navController.navigate("chart")}) {
                     Icon(
                         imageVector = Icons.Filled.Star,
                         contentDescription = "Graph",

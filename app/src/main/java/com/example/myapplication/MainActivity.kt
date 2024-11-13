@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.myapplication.ui.ChartPage
 import com.example.myapplication.ui.LoginPage
 import com.example.myapplication.ui.MainPage
 import com.example.myapplication.ui.RegisterPage
@@ -42,6 +43,9 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("addNewBill") {
                         AddNewBillPage(navController)
+                    }
+                    composable("chart"){
+                        ChartPage(navController)
                     }
                 }
             }
