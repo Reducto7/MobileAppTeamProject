@@ -48,9 +48,9 @@ fun MainPage(navController: NavController, modifier: Modifier = Modifier) {
                     )
                 }
                 Spacer(modifier = Modifier.width(70.dp))
-                IconButton(onClick = { navController.navigate("setting") }) {
+                IconButton(onClick = { navController.navigate("mypage") }) {
                     Icon(
-                        imageVector = Icons.Filled.Settings,
+                        imageVector = Icons.Filled.Person,
                         contentDescription = "Setting",
                         tint = Color.White
                     )

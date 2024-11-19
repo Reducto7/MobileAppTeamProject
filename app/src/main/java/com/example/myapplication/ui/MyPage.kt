@@ -44,12 +44,12 @@ fun MyPage(
         content = { paddingValues ->
             Surface(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
-                color = MaterialTheme.colorScheme.background
+                color = Color.White
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // 头像和账户名
