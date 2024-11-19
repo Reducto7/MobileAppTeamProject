@@ -8,12 +8,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.myapplication.ui.EditBillPage
 import com.example.myapplication.ui.LoginPage
 import com.example.myapplication.ui.MainPage
 import com.example.myapplication.ui.RegisterPage
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.teamproject.ui.AddNewBillPage
-import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
                 NavHost(
                     navController = navController,
                     startDestination = "login"
-                ){
+                ) {
                     composable(route = "login") {
                         LoginPage(navController, context = this@MainActivity)
                     }
@@ -43,14 +43,12 @@ class MainActivity : ComponentActivity() {
                     composable("addNewBill") {
                         AddNewBillPage(navController)
                     }
+                    composable("editBill/{billId}") { backStackEntry ->
+                        val billId = backStackEntry.arguments?.getString("billId")?.toIntOrNull()
+                        EditBillPage(navController, billId)
+                    }
                 }
             }
         }
     }
 }
-
-
-
-
-
-
