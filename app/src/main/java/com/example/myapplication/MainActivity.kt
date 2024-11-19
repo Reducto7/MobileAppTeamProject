@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.ChartPage
 import com.example.myapplication.ui.LoginPage
 import com.example.myapplication.ui.MainPage
+import com.example.myapplication.ui.MyPage
 import com.example.myapplication.ui.RegisterPage
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.teamproject.ui.AddNewBillPage
@@ -46,6 +47,9 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("chart"){
                         ChartPage(navController)
+                    }
+                    composable("mypage") {
+                        MyPage(navController)
                     }
                 }
             }
