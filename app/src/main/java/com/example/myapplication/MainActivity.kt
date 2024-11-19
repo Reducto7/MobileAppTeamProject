@@ -15,7 +15,6 @@ import com.example.myapplication.ui.MyPage
 import com.example.myapplication.ui.RegisterPage
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.teamproject.ui.AddNewBillPage
-import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 
 class MainActivity : ComponentActivity() {
