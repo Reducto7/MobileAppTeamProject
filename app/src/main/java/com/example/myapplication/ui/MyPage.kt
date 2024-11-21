@@ -35,16 +35,11 @@ fun MyPage(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(text = "My Page" ) },
-                colors = topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("main") }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "back",
-                            tint = Color.White,
+                            contentDescription = "back"
                         )
                     }
                 }
@@ -52,8 +47,7 @@ fun MyPage(
         },
         content = { paddingValues ->
             Surface(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-                color = Color.White
+                modifier = Modifier.fillMaxSize().padding(paddingValues)
             ) {
                 Column(
                     modifier = Modifier
@@ -162,20 +156,15 @@ fun FunctionButtonsSection(navController: NavController) {
         }
 
          */
-        Button(
+        OutlinedButton(
             onClick = { navController.navigate("settings") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White, // 填充颜色为白色
-                contentColor = Color.Black // 字体颜色为黑色
-            ),
-            border = BorderStroke(1.dp, Color.Black) // 边框为黑色
         ) {
             Text(text = "settings")
         }
-        Button(
+        OutlinedButton(
             onClick = {
                 // 退出账号并跳转到登录页面
                 navController.navigate("login") {
@@ -183,11 +172,6 @@ fun FunctionButtonsSection(navController: NavController) {
                 }
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White, // 填充颜色为白色
-                contentColor = Color.Black // 字体颜色为黑色
-            ),
-            border = BorderStroke(1.dp, Color.Black) // 边框为黑色
         ) {
             Text(text = "退出账号")
         }

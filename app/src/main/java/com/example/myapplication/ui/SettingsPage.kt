@@ -34,14 +34,9 @@ fun SettingsPage(navController: NavController, accountName: String = "ZR", passw
             }
             Spacer(modifier = Modifier.height(32.dp))
 
-            Button(
+            OutlinedButton(
                 onClick = { navController.popBackStack() },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White, // 填充颜色为白色
-                    contentColor = Color.Black // 字体颜色为黑色
-                ),
-                border = BorderStroke(1.dp, Color.Black) // 边框为黑色
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(text = "返回")
             }

@@ -93,10 +93,6 @@ fun ChartPage(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(text = "Chart") },
-                colors = topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black,
-                ),
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("main") }) {
                         Icon(

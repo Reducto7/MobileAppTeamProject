@@ -69,16 +69,11 @@ fun AddNewBillPage(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(text = "Add New Bill" ) },
-                colors = topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("main") }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "back",
-                            tint = Color.White,
+                            contentDescription = "back"
                         )
                     }
                 }

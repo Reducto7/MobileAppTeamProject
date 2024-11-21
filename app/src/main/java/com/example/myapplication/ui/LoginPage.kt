@@ -34,6 +34,8 @@ import android.content.Context
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,10 +60,7 @@ fun LoginPage(navController: NavController, modifier: Modifier = Modifier, conte
     }
 
     CenterAlignedTopAppBar(
-        title = { Text("Login Page", color = Color.White) },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Black
-        )
+        title = { Text("Login Page") }
     )
     Column(
         modifier = modifier
@@ -95,7 +94,7 @@ fun LoginPage(navController: NavController, modifier: Modifier = Modifier, conte
                     dialogMessage = "邮箱和密码不能为空。"
                     isDialogVisible = true
                 } else {
-                    loginUser(email, password) { success ->
+                    loginUser(email, password) { success, message ->
                         if (success) {
                             if (autoLogin) {
                                 coroutineScope.launch {
@@ -114,7 +113,7 @@ fun LoginPage(navController: NavController, modifier: Modifier = Modifier, conte
                             }
                             navController.navigate("main")
                         } else {
-                            dialogMessage = "邮箱或密码错误，请重试。"
+                            dialogMessage = message
                             isDialogVisible = true
                         }
                     }
@@ -129,6 +128,7 @@ fun LoginPage(navController: NavController, modifier: Modifier = Modifier, conte
                 style = typography.titleMedium
             )
         }
+
 
         OutlinedButton(
             onClick = {},
@@ -185,12 +185,22 @@ fun LoginPage(navController: NavController, modifier: Modifier = Modifier, conte
     }
 }
 
-fun loginUser(email: String, password: String, onResult: (Boolean) -> Unit) {
+fun loginUser(email: String, password: String, onResult: (Boolean, String) -> Unit) {
     val auth = FirebaseAuth.getInstance()
     auth.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-        onResult(task.isSuccessful)
+        if (task.isSuccessful) {
+            onResult(true, "")
+        } else {
+            val errorMessage = when (val exception = task.exception) {
+                is FirebaseAuthInvalidUserException -> "该账号未注册，请先注册。"
+                is FirebaseAuthInvalidCredentialsException -> "邮箱或密码错误，请重试。"
+                else -> "登录失败，请稍后重试。原因：${exception?.localizedMessage ?: "未知错误"}"
+            }
+            onResult(false, errorMessage)
+        }
     }
 }
+
 
 @Composable
 fun LoginDialog(
