@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.text.input.ImeAction
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 
 
@@ -78,11 +80,29 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions.Default.copy(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done // 将转行键设置为“确认键”
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (email.isBlank() || password.isBlank()) {
+                        dialogMessage = "邮箱和密码不能为空。"
+                        isDialogVisible = true
+                    } else {
+                        registerUser(email, password) { success, message ->
+                            isRegistrationSuccessful = success
+                            dialogMessage = message
+                            isDialogVisible = true
+                        }
+                    }
+                }
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
         )
+
 
         Spacer(modifier = Modifier.height(16.dp))
 

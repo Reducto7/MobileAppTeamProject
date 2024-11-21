@@ -56,6 +56,8 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.material)
+
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -67,6 +69,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.firebase.auth.ktx)
     implementation(libs.androidx.runtime.livedata)
+    implementation(libs.material)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -75,8 +78,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.material3)
-    implementation( "com.google.accompanist:accompanist-swiperefresh:0.30.0")
-    implementation( "com.google.firebase:firebase-analytics")
-    implementation( "androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
-    implementation( "androidx.compose.material3:material3:<latest_version>")
+    implementation( libs.accompanist.swiperefresh.v0300)
+    implementation( libs.google.firebase.analytics)
+    implementation( libs.androidx.lifecycle.viewmodel.compose.v261)
+    implementation( libs.androidx.material3.vlatestversion)
 }
