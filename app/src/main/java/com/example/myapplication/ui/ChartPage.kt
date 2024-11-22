@@ -39,6 +39,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -48,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -65,14 +67,15 @@ fun ChartPage(
     // 模拟数据
     val simulatedData = mapOf(
         "October" to listOf(
-            150f, 100f, 300f, 150f, 400f, 250f, 200f, 200f, 150f, 200f,
-            500f, 100f, 200f, 150f, 200f, 250f, 100f, 200f, 150f, 100f,
-            250f, 300f, 200f, 150f, 300f, 250f
+            150f, 100f, 300f, 150f, 400f, 0f, 200f, 200f, 150f, 200f,
+            500f, 100f, 0f, 150f, 200f, 250f, 100f, 200f, 150f, 100f,
+            250f, 300f, 200f, 0f, 300f, 250f, 200f, 150f, 400f, 250f,
+            100f
         ),
         "November" to listOf(
-            250f, 100f, 200f, 150f, 400f, 250f, 100f, 200f, 150f, 100f,
+            250f, 100f, 200f, 150f, 400f, 250f, 50f, 200f, 150f, 100f,
             250f, 100f, 200f, 150f, 200f, 250f, 100f, 200f, 150f, 300f,
-            250f, 100f, 200f, 150f, 300f
+            250f, 100f, 150f, 150f, 300f,250f, 100f, 150f, 150f, 400f
         )
     )
 
@@ -109,7 +112,9 @@ fun ChartPage(
                 xAxisLabels = generateXAxisLabels(selectedData.size)
             }
 
+
             CustomLineChart(dataPoints, xAxisLabels)
+
         }
     }
 }
@@ -306,7 +311,8 @@ fun CustomLineChart(dataPoints: List<Float>, xAxisLabels: List<String>) {
 
     val maxX = dataPoints.size - 1
     val maxY = dataPoints.maxOrNull() ?: 0f
-    val minY = dataPoints.minOrNull() ?: 0f
+    val minY = 0f
+
 
     Box(
         modifier = Modifier
@@ -327,16 +333,28 @@ fun CustomLineChart(dataPoints: List<Float>, xAxisLabels: List<String>) {
                     }
                 }
         ) {
+
             // 绘制网格线
-            for (i in 1..4) {
-                val y = size.height * i / 5
-                drawLine(
-                    color = Color.LightGray,
-                    start = Offset(0f, y),
-                    end = Offset(size.width, y),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
+            val averageValue = if (dataPoints.isNotEmpty()) dataPoints.average().toFloat() else 0f
+            val averageY = size.height - ((averageValue - minY) / (maxY - minY)) * size.height
+
+            // 零刻度线
+            drawLine(
+                color = Color.Gray,
+                start = Offset(0f, size.height),
+                end = Offset(size.width, size.height),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            // 平均值线（灰色虚线）
+            drawLine(
+                color = Color.Gray,
+                start = Offset(0f, averageY),
+                end = Offset(size.width, averageY),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f) // 虚线效果
+            )
+
 
             // 绘制折线图
             val path = Path().apply {
@@ -352,18 +370,37 @@ fun CustomLineChart(dataPoints: List<Float>, xAxisLabels: List<String>) {
                 style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // 绘制横坐标标签
+            //绘制横坐标
             xAxisLabels.forEachIndexed { index, label ->
-                val x = (index.toFloat() / (xAxisLabels.size - 1)) * size.width
-                drawContext.canvas.nativeCanvas.drawText(
-                    label,
-                    x,
-                    size.height + 20.dp.toPx(),
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.BLACK
-                        textSize = 32f
-                        textAlign = android.graphics.Paint.Align.CENTER
-                    }
+                if (label.isNotEmpty()) { // 仅绘制非空标签
+                    val x = (index.toFloat() / maxX) * size.width
+                    drawContext.canvas.nativeCanvas.drawText(
+                        label,
+                        x,
+                        size.height + 20.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 32f
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
+                    )
+                }
+            }
+
+            // 绘制所有点
+            dataPoints.forEachIndexed { index, value ->
+                val x = (index / maxX.toFloat()) * size.width
+                val y = size.height - ((value - minY) / (maxY - minY)) * size.height
+
+                drawCircle(
+                    color = Color.Black,
+                    radius = 2.dp.toPx(),
+                    center = Offset(x, y)
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 1.dp.toPx(),
+                    center = Offset(x, y)
                 )
             }
 
@@ -373,10 +410,10 @@ fun CustomLineChart(dataPoints: List<Float>, xAxisLabels: List<String>) {
                 val y =
                     size.height - ((dataPoints[selectedIndex] - minY) / (maxY - minY)) * size.height
                 //画选择的点
-                drawCircle(color = Color.Black, radius = 4.dp.toPx(), center = Offset(x, y))
-                //显示选择的数据
+                drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
+                // 显示选择的数据
                 drawContext.canvas.nativeCanvas.drawText(
-                    "${dataPoints[selectedIndex]}",
+                    "Day${selectedIndex + 1} : ${dataPoints[selectedIndex].toInt()}",
                     x,
                     y - 16.dp.toPx(),
                     android.graphics.Paint().apply {
@@ -390,12 +427,10 @@ fun CustomLineChart(dataPoints: List<Float>, xAxisLabels: List<String>) {
     }
 }
 
-
 fun generateXAxisLabels(dataSize: Int): List<String> {
-    // 横坐标索引: 第1，第5，第10，第15，第20，第25，最后一个点
-    val indices = listOf(0, 4, 9, 14, 19, 24, 29)
-    return indices.map { index ->
-        String.format("%02d", index + 1)
+    // 指定要显示标签的索引
+    val indices = listOf(0, 4, 9, 14, 19, 24, dataSize - 1)
+    return List(dataSize) { index ->
+        if (index in indices) String.format("%02d", index + 1) else ""
     }
 }
-
