@@ -4,7 +4,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,23 +31,23 @@ fun MyPage(
     accountName: String = "ZR"
 ) {
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "My Page",
-                        color = Color.White // 设置标题字体颜色为白色
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black // 设置顶部背景颜色为黑色
-                )
+            CenterAlignedTopAppBar(
+                title = { Text(text = "My Page" ) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigate("main") }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "back"
+                        )
+                    }
+                }
             )
         },
         content = { paddingValues ->
             Surface(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-                color = Color.White
+                modifier = Modifier.fillMaxSize().padding(paddingValues)
             ) {
                 Column(
                     modifier = Modifier
@@ -124,6 +127,7 @@ fun FunctionButtonsSection(navController: NavController) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        /*
         Button(
             onClick = { /* 暂时不做跳转 */ },
             modifier = Modifier
@@ -150,18 +154,26 @@ fun FunctionButtonsSection(navController: NavController) {
         ) {
             Text(text = "Household bill")
         }
-        Button(
+
+         */
+        OutlinedButton(
             onClick = { navController.navigate("settings") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White, // 填充颜色为白色
-                contentColor = Color.Black // 字体颜色为黑色
-            ),
-            border = BorderStroke(1.dp, Color.Black) // 边框为黑色
         ) {
             Text(text = "settings")
+        }
+        OutlinedButton(
+            onClick = {
+                // 退出账号并跳转到登录页面
+                navController.navigate("login") {
+                    popUpTo("mypage") { inclusive = true }
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Text(text = "退出账号")
         }
     }
 }

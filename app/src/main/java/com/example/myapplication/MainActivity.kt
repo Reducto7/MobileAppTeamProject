@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 NavHost(
                     navController = navController,
-                    startDestination = "login"
+                    startDestination = "chart"
                 ) {
                     composable(route = "login") {
                         LoginPage(navController, context = this@MainActivity)
@@ -39,21 +39,21 @@ class MainActivity : ComponentActivity() {
                     composable("main") {
                         MainPage(navController)
                     }
-                    composable("setting") {
+                    composable("settings") {
                         SettingsPage(navController)
                     }
                     composable("addNewBill") {
                         AddNewBillPage(navController)
                     }
-                    composable("editBill/{billId}") { backStackEntry ->
-                        val billId = backStackEntry.arguments?.getString("billId")?.toIntOrNull()
-                        EditBillPage(navController, billId)
+                    composable("mypage"){
+                        MyPage(navController)
                     }
                     composable("chart"){
                         ChartPage(navController)
                     }
-                    composable("mypage") {
-                        MyPage(navController)
+                    composable("editBill/{billId}") { backStackEntry ->
+                        val billId = backStackEntry.arguments?.getString("billId")?.toIntOrNull()
+                        EditBillPage(navController, billId)
                     }
                 }
             }

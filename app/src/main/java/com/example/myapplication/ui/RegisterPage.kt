@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -33,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.text.input.ImeAction
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,19 +49,15 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
     var dialogMessage by rememberSaveable { mutableStateOf("") }
 
     CenterAlignedTopAppBar(
-        title = { Text("Register Page", color = Color.White) },
+        title = { Text("Register Page") },
         navigationIcon = {
             IconButton(onClick = { navController.navigate("login") }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "back",
-                    tint = Color.White
+                    contentDescription = "back"
                 )
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Black
-        )
+        }
     )
     Column(
         modifier = modifier
@@ -81,11 +80,29 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions.Default.copy(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done // 将转行键设置为“确认键”
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (email.isBlank() || password.isBlank()) {
+                        dialogMessage = "邮箱和密码不能为空。"
+                        isDialogVisible = true
+                    } else {
+                        registerUser(email, password) { success, message ->
+                            isRegistrationSuccessful = success
+                            dialogMessage = message
+                            isDialogVisible = true
+                        }
+                    }
+                }
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp)
         )
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -95,9 +112,9 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                     dialogMessage = "邮箱和密码不能为空。"
                     isDialogVisible = true
                 } else {
-                    registerUser(email, password) { success ->
+                    registerUser(email, password) { success, message ->
                         isRegistrationSuccessful = success
-                        dialogMessage = if (success) "您已成功注册！" else "注册失败，请重试。"
+                        dialogMessage = message
                         isDialogVisible = true
                     }
                 }
@@ -110,6 +127,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                 style = typography.titleMedium
             )
         }
+
     }
 
     if (isDialogVisible) {
@@ -125,12 +143,21 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
     }
 }
 
-fun registerUser(email: String, password: String, onResult: (Boolean) -> Unit) {
+fun registerUser(email: String, password: String, onResult: (Boolean, String) -> Unit) {
     val auth = FirebaseAuth.getInstance()
     auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-        onResult(task.isSuccessful)
+        if (task.isSuccessful) {
+            onResult(true, "您已成功注册！")
+        } else {
+            val errorMessage = when (val exception = task.exception) {
+                is FirebaseAuthUserCollisionException -> "该邮箱已被注册。"
+                else -> "注册失败，请重试。原因：${exception?.localizedMessage ?: "未知错误"}"
+            }
+            onResult(false, errorMessage)
+        }
     }
 }
+
 
 @Composable
 fun RegisterDialog(

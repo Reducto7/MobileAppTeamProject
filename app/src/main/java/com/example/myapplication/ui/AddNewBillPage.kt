@@ -1,5 +1,6 @@
 package com.example.teamproject.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,8 @@ import androidx.navigation.NavController
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,16 +72,11 @@ fun AddNewBillPage(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(text = "Add New Bill" ) },
-                colors = topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("main") }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "back",
-                            tint = Color.White,
+                            contentDescription = "back"
                         )
                     }
                 }
@@ -95,22 +93,41 @@ fun AddNewBillPage(
         ) {
             // 横向切换按钮
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Button(
+                OutlinedButton(
                     onClick = { isIncome = true },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isIncome) Color.Black else Color.Gray))
-                {
-                    Text(text = "Income")
+                    shape = RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp),
+                    border = BorderStroke(1.dp, Color.Black),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isIncome) Color.Black else Color.White, // 选中按钮为黑色
+                        contentColor = Color.Black
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Income",
+                        color = if (isIncome) Color.White else Color.Black
+                    )
                 }
 
-                Button(onClick = { isIncome = false },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isIncome) Color.Gray else Color.Black))
-                {
-                    Text(text = "Expenditure")
+                OutlinedButton(
+                    onClick = { isIncome = false },
+                    shape = RoundedCornerShape(topEnd = 50.dp, bottomEnd = 50.dp),
+                    border = BorderStroke(1.dp, Color.Black),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isIncome) Color.White else Color.Black, // 选中按钮为黑色
+                        contentColor = Color.Black
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Expenditure",
+                        color = if (isIncome) Color.Black else Color.White
+                    )
                 }
             }
 
