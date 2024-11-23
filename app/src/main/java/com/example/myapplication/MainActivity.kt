@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 NavHost(
                     navController = navController,
-                    startDestination = "chart"
+                    startDestination = "login"
                 ) {
                     composable(route = "login") {
                         LoginPage(navController, context = this@MainActivity)
