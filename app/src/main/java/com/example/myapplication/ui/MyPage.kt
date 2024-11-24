@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.myapplication.R
+import com.google.firebase.auth.FirebaseAuth
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,14 +28,16 @@ import com.example.myapplication.R
 fun MyPage(
     navController: NavController,
     totalDays: Int = 100,
-    totalRecords: Int = 300,
-    accountName: String = "ZR"
+    totalRecords: Int = 300
 ) {
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val accountName = currentUser?.email?.substringBefore("@") ?: "Guest" // 默认显示 "Guest" 如果用户未登录
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "My Page" ) },
+                title = { Text(text = "My Page") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("main") }) {
                         Icon(
@@ -47,7 +50,9 @@ fun MyPage(
         },
         content = { paddingValues ->
             Surface(
-                modifier = Modifier.fillMaxSize().padding(paddingValues)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
                 Column(
                     modifier = Modifier
@@ -72,6 +77,7 @@ fun MyPage(
         }
     )
 }
+
 
 @Composable
 fun HeaderSection(accountName: String) {
@@ -158,9 +164,8 @@ fun FunctionButtonsSection(navController: NavController) {
          */
         OutlinedButton(
             onClick = { navController.navigate("settings") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
         ) {
             Text(text = "settings")
         }
@@ -172,6 +177,7 @@ fun FunctionButtonsSection(navController: NavController) {
                 }
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
         ) {
             Text(text = "退出账号")
         }

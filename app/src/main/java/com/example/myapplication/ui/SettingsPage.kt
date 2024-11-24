@@ -10,9 +10,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
-fun SettingsPage(navController: NavController, accountName: String = "ZR", password: String = "12345678") {
+fun SettingsPage(navController: NavController, password: String = "12345678") {
+
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val accountName = currentUser?.email?.substringBefore("@") ?: "Guest" // 默认显示 "Guest" 如果用户未登录
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -36,26 +41,11 @@ fun SettingsPage(navController: NavController, accountName: String = "ZR", passw
 
             OutlinedButton(
                 onClick = { navController.popBackStack() },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
             ) {
                 Text(text = "返回")
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-/*
-            Button(
-                onClick = {
-                    // 退出账号并跳转到登录页面
-                    navController.navigate("login") {
-                        popUpTo("mypage") { inclusive = true }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "退出账号")
-            }
-
- */
         }
     }
 }
