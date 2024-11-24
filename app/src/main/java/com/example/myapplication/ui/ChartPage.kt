@@ -199,7 +199,7 @@ fun ChartPage(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Bar Chart分割线
-            DividerWithText("Bar Chart")
+            DividerWithText("支出排行榜")
 
             // 横向柱状图
             HorizontalBarChart(
