@@ -41,9 +41,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -67,6 +69,8 @@ fun ChartPage(
     var dataPoints by remember { mutableStateOf(listOf<Float>()) }
     var xAxisLabels by remember { mutableStateOf(listOf<String>()) }
     var isYearSelected by remember { mutableStateOf(false) } // 外部管理的状态
+    var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
+
 
     // 动态获取当前年份和月份
     val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
@@ -78,7 +82,7 @@ fun ChartPage(
     val currentMonth = months[currentMonthIndex]
 
 
-    // 模拟数据
+    // 模拟数据(折线图)
     val simulatedMonthData = mapOf(
         "October" to listOf(
             150f, 100f, 300f, 150f, 400f, 0f, 200f, 200f, 150f, 200f,
@@ -99,9 +103,21 @@ fun ChartPage(
         // 添加其他年份数据
     )
 
+    // 模拟数据（柱状图）
+    val simulatedMonthBarData = mapOf(
+        "October" to listOf("Food" to 300f, "Shopping" to 301f, "Rent" to 230f, "Daily" to 200f, "Transport" to 100f),
+        "November" to listOf("Food" to 250f, "Shopping" to 220f, "Rent" to 100f, "Daily" to 150f, "Transport" to 200f)
+    )
+
+    val simulatedYearBarData = mapOf(
+        2023 to listOf("Food" to 3600f, "Shopping" to 4200f, "Rent" to 4600f, "Daily" to 2400f, "Transport" to 3600f),
+        2024 to listOf("Food" to 3200f, "Shopping" to 4800f, "Rent" to 4200f, "Daily" to 2200f, "Transport" to 3800f)
+    )
+
     // 初始化默认值
     LaunchedEffect(Unit) {
         dataPoints = simulatedMonthData[currentMonth] ?: List(31) { 0f }
+        barChartData = simulatedMonthBarData[currentMonth] ?: emptyList()
         xAxisLabels = generateXAxisLabels(dataPoints.size)
     }
 
@@ -138,10 +154,12 @@ fun ChartPage(
                     if (isYearSelected) {
                         val yearData = simulatedYearData[year] ?: List(12) { 0f }
                         dataPoints = yearData
+                        barChartData = simulatedYearBarData[year] ?: emptyList()
                         xAxisLabels = generateXAxisLabelsForYear()
                     } else {
                         val monthData = simulatedMonthData[month] ?: List(31) { 0f }
                         dataPoints = monthData
+                        barChartData = simulatedMonthBarData[month] ?: emptyList()
                         xAxisLabels = generateXAxisLabels(monthData.size)
                     }
                     selectedIndex = -1 // 重置选中状态
@@ -183,7 +201,11 @@ fun ChartPage(
             // Bar Chart分割线
             DividerWithText("Bar Chart")
 
-
+            // 横向柱状图
+            HorizontalBarChart(
+                data = barChartData,
+                maxValue = barChartData.maxOfOrNull { it.second } ?: 1f
+            )
         }
     }
 }
@@ -488,4 +510,73 @@ fun generateXAxisLabels(dataSize: Int): List<String> {
 
 fun generateXAxisLabelsForYear(): List<String> {
     return (1..12).map { String.format("%02d", it) }
+}
+
+//横向柱状图实现
+@Composable
+fun HorizontalBarChart(
+    data: List<Pair<String, Float>>, // 数据格式：标签和数值
+    maxValue: Float,                 // 数据中的最大值，用于计算比例
+    modifier: Modifier = Modifier
+) {
+    // 将数据按数值降序排列
+    val sortedData = data.sortedByDescending { it.second }
+
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        sortedData.forEach { (label, value) ->
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 显示标签
+                    Text(
+                        text = label,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    // 横向柱状条
+                    Box(
+                        modifier = Modifier
+                            .weight(4f)
+                            .height(20.dp)
+                            .background(Color.White) // 设置白色背景
+                            .border(
+                                width = 1.dp,
+                                color = Color.Black,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .clip(RoundedCornerShape(10.dp)) // 保证圆角效果
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
+                                .height(20.dp)
+                                .background(Color.Black, RoundedCornerShape(10.dp))
+                        )
+                    }
+                }
+                // 数值显示在柱状图右上角
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = value.toInt().toString(),
+                        //text = "${value.toInt()}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(end = 8.dp, top = 4.dp)
+                    )
+                }
+            }
+        }
+    }
 }
