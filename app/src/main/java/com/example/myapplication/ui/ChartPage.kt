@@ -47,6 +47,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.ui.draw.clip
@@ -147,43 +149,20 @@ fun ChartPage(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            //收入/支出选项
-            IsIncome()
-
-            // 时间选择器
-            TimeSelection(
-                onMonthYearSelected = { month, year ->
-                    if (isYearSelected) {
-                        val yearData = simulatedYearData[year] ?: List(12) { 0f }
-                        dataPoints = yearData
-                        barChartData = simulatedYearBarData[year] ?: emptyList()
-                        xAxisLabels = generateXAxisLabelsForYear()
-                    } else {
-                        val monthData = simulatedMonthData[month] ?: List(31) { 0f }
-                        dataPoints = monthData
-                        barChartData = simulatedMonthBarData[month] ?: emptyList()
-                        xAxisLabels = generateXAxisLabels(monthData.size)
-                    }
-                    selectedIndex = -1 // 重置选中状态
-                },
-                isYearSelected = isYearSelected,
-                onSelectionChanged = { isYear ->
-                    isYearSelected = isYear
-                    if (isYear) {
-                        dataPoints = simulatedYearData[currentYear] ?: List(12) { 0f }
-                        xAxisLabels = generateXAxisLabelsForYear()
-                    } else {
-                        dataPoints = simulatedMonthData[currentMonth] ?: List(31) { 0f }
-                        xAxisLabels = generateXAxisLabels(dataPoints.size)
-                    }
-                    selectedIndex = -1 // 重置选中状态
-                },
+            // 时间选择和收入/支出选择
+            SelectionDropdown(
+                onMonthYearSelected = { _, _ -> },
                 currentYear = currentYear,
-                currentMonth = currentMonth
+                currentMonth = currentMonth,
+                simulatedMonthData = simulatedMonthData,
+                simulatedYearData = simulatedYearData,
+                onDataPointsUpdated = { newDataPoints, newXAxisLabels ->
+                    dataPoints = newDataPoints
+                    xAxisLabels = newXAxisLabels
+                }
             )
 
-
-            Spacer(modifier = Modifier.height(8.dp))
+            //Spacer(modifier = Modifier.height(4.dp))
 
             // Line Chart分隔线
             DividerWithText("Line Chart")
@@ -198,10 +177,7 @@ fun ChartPage(
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Bar Chart分割线
-            DividerWithText("支出排行榜")
+            Spacer(modifier = Modifier.height(4.dp))
 
             // 横向柱状图
             HorizontalBarChartWithClick(
@@ -216,57 +192,13 @@ fun ChartPage(
 }
 
 @Composable
-fun IsIncome(){
-    var isIncome by remember { mutableStateOf(true) } // 控制是收入还是支出页面
-
-    // 横向切换按钮
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        OutlinedButton(
-            onClick = { isIncome = true },
-            shape = RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp),
-            border = BorderStroke(1.dp, Color.Black),
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = if (isIncome) Color.Black else Color.White, // 选中按钮为黑色
-                contentColor = Color.Black
-            ),
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = "Income",
-                color = if (isIncome) Color.White else Color.Black
-            )
-        }
-
-        OutlinedButton(
-            onClick = { isIncome = false },
-            shape = RoundedCornerShape(topEnd = 50.dp, bottomEnd = 50.dp),
-            border = BorderStroke(1.dp, Color.Black),
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = if (isIncome) Color.White else Color.Black, // 选中按钮为黑色
-                contentColor = Color.Black
-            ),
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = "Expenditure",
-                color = if (isIncome) Color.Black else Color.White
-            )
-        }
-    }
-}
-
-@Composable
-fun TimeSelection(
+fun SelectionDropdown(
     onMonthYearSelected: (String, Int) -> Unit,
-    isYearSelected: Boolean,
-    onSelectionChanged: (Boolean) -> Unit,
     currentYear: Int,
-    currentMonth: String
+    currentMonth: String,
+    simulatedMonthData: Map<String, List<Float>>,
+    simulatedYearData: Map<Int, List<Float>>,
+    onDataPointsUpdated: (List<Float>, List<String>) -> Unit
 ) {
     val years = (2020..2025).toList()
     val months = listOf(
@@ -276,93 +208,126 @@ fun TimeSelection(
 
     var selectedYear by remember { mutableStateOf(currentYear) }
     var selectedMonth by remember { mutableStateOf(currentMonth) }
+    var isMonthDropdownExpanded by remember { mutableStateOf(false) }
+    var isYearDropdownExpanded by remember { mutableStateOf(false) }
 
-    val yearListState = rememberLazyListState()
-    val monthListState = rememberLazyListState()
+    var isDropdownExpanded by remember { mutableStateOf(false) } // 控制收入/支出菜单是否展开
+    var selectedOption by remember { mutableStateOf("Income") } // 当前选中的选项
 
-    // 通知选择更改
+    // 通知选择更改（当月或年变化时）
     LaunchedEffect(selectedMonth, selectedYear) {
         onMonthYearSelected(selectedMonth, selectedYear)
     }
 
-    LaunchedEffect(Unit) {
-        if (isYearSelected) {
-            yearListState.scrollToItem(years.indexOf(currentYear))
-        } else {
-            monthListState.scrollToItem(months.indexOf(currentMonth))
-        }
-    }
-
-    OutlinedCard(
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color.Black),
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(4.dp)
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        // 收入/支出按钮
+        OutlinedButton(
+            onClick = { isDropdownExpanded = !isDropdownExpanded },
+            modifier = Modifier.height(56.dp).width(100.dp),
+            border = BorderStroke(1.dp, Color.Black),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            )
         ) {
-            Button(
-                onClick = {
-                    onSelectionChanged(false) // 切换到月份模式
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isYearSelected) Color.White else Color.Black,
-                    contentColor = Color.White
-                ),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp),
-            ) {
-                Text(
-                    text = "Month",
-                    color = if (isYearSelected) Color.Black else Color.White
-                )
-            }
+            Text(text = selectedOption)
+        }
 
-            Button(
+        // 收入/支出下拉菜单
+        DropdownMenu(
+            expanded = isDropdownExpanded,
+            onDismissRequest = { isDropdownExpanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Income") },
                 onClick = {
-                    onSelectionChanged(true) // 切换到年份模式
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isYearSelected) Color.Black else Color.White,
-                    contentColor = Color.White
-                ),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp)
-            ) {
-                Text(
-                    text = "Year",
-                    color = if (isYearSelected) Color.White else Color.Black
+                    selectedOption = "Income"
+                    isDropdownExpanded = false
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Expenditure") },
+                onClick = {
+                    selectedOption = "Expenditure"
+                    isDropdownExpanded = false
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Month 按钮
+        OutlinedButton(
+            onClick = { isMonthDropdownExpanded = !isMonthDropdownExpanded },
+            modifier = Modifier.weight(1f).height(56.dp),
+            border = BorderStroke(1.dp, Color.Black),
+            shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            )
+        ) {
+            Text("Month: $selectedMonth")
+        }
+
+        // Year 按钮
+        OutlinedButton(
+            onClick = { isYearDropdownExpanded = !isYearDropdownExpanded },
+            modifier = Modifier.weight(1f).height(56.dp),
+            border = BorderStroke(1.dp, Color.Black),
+            shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            )
+        ) {
+            Text("Year: $selectedYear")
+        }
+
+        // Month 下拉菜单
+        DropdownMenu(
+            expanded = isMonthDropdownExpanded,
+            onDismissRequest = { isMonthDropdownExpanded = false }
+        ) {
+            months.forEach { month ->
+                DropdownMenuItem(
+                    text = { Text(month) },
+                    onClick = {
+                        selectedMonth = month
+                        isMonthDropdownExpanded = false
+
+                        // 更新折线图数据为选中的月份数据
+                        val monthData = simulatedMonthData[month] ?: List(31) { 0f }
+                        val xAxisLabels = generateXAxisLabels(monthData.size)
+                        onDataPointsUpdated(monthData, xAxisLabels)
+                    }
                 )
             }
         }
 
-        if (isYearSelected) {
-            LazyRow(state = yearListState) {
-                items(years) { year ->
-                    Text(
-                        text = year.toString(),
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clickable { selectedYear = year },
-                        color = if (selectedYear == year) Color.Black else Color.Gray
-                    )
-                }
-            }
-        } else {
-            LazyRow(state = monthListState) {
-                items(months) { month ->
-                    Text(
-                        text = month,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clickable { selectedMonth = month },
-                        color = if (selectedMonth == month) Color.Black else Color.Gray
-                    )
-                }
+        // Year 下拉菜单
+        DropdownMenu(
+            expanded = isYearDropdownExpanded,
+            onDismissRequest = { isYearDropdownExpanded = false }
+        ) {
+            years.forEach { year ->
+                DropdownMenuItem(
+                    text = { Text(year.toString()) },
+                    onClick = {
+                        selectedYear = year
+                        isYearDropdownExpanded = false
+
+                        // 更新折线图数据为选中的年份数据
+                        val yearData = simulatedYearData[year] ?: List(12) { 0f }
+                        val xAxisLabels = generateXAxisLabelsForYear()
+                        onDataPointsUpdated(yearData, xAxisLabels)
+                    }
+                )
             }
         }
     }
