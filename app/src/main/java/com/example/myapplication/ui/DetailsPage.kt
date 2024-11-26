@@ -220,6 +220,46 @@ fun CustomLineChartWithAxis(dataPoints: List<Float>) {
 }
 
 
+//柱状图
+@Composable
+fun HorizontalBarChart(
+    data: List<Pair<String, Float>>,
+    maxValue: Float
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        data.sortedByDescending { it.second }.forEach { (label, value) ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(4f)
+                        .height(20.dp)
+                        .background(Color.White)
+                        .border(1.dp, Color.Black, RoundedCornerShape(10.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = value / maxValue)
+                            .height(20.dp)
+                            .background(Color.Black)
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 //饼状图组件
 @Composable
@@ -265,46 +305,6 @@ fun PieChart(data: List<Pair<String, Float>>) {
                 }
             )
             startAngle += sweepAngle
-        }
-    }
-}
-
-//柱状图
-@Composable
-fun HorizontalBarChart(
-    data: List<Pair<String, Float>>,
-    maxValue: Float
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        data.sortedByDescending { it.second }.forEach { (label, value) ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Box(
-                    modifier = Modifier
-                        .weight(4f)
-                        .height(20.dp)
-                        .background(Color.White)
-                        .border(1.dp, Color.Black, RoundedCornerShape(10.dp))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(fraction = value / maxValue)
-                            .height(20.dp)
-                            .background(Color.Black)
-                    )
-                }
-            }
         }
     }
 }
