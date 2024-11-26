@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.ChartPage
+import com.example.myapplication.ui.DetailsPage
 import com.example.myapplication.ui.EditBillPage
 import com.example.myapplication.ui.LoginPage
 import com.example.myapplication.ui.MainPage
@@ -50,6 +51,10 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("chart"){
                         ChartPage(navController)
+                    }
+                    composable("details/{category}") { backStackEntry ->
+                        val category = backStackEntry.arguments?.getString("category") ?: "Unknown"
+                        DetailsPage(navController, category) // 详情页面
                     }
                     composable("editBill/{billId}") { backStackEntry ->
                         val billId = backStackEntry.arguments?.getString("billId")?.toIntOrNull()
