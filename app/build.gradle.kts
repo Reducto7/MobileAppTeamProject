@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
+    id ("kotlin-kapt")
+    id ("com.google.dagger.hilt.android")
 }
 
 android {
@@ -93,4 +95,13 @@ dependencies {
     implementation( libs.google.firebase.analytics)
     implementation( libs.androidx.lifecycle.viewmodel.compose.v261)
     implementation( libs.androidx.material3.vlatestversion)
+
+    implementation (libs.firebase.database.ktx)
+    implementation ("com.google.dagger:hilt-android:2.51.1")
+    kapt ("com.google.dagger:hilt-compiler:2.51.1")
+
+}
+
+kapt {
+    correctErrorTypes = true
 }

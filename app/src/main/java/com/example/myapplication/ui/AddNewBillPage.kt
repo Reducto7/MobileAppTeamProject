@@ -45,6 +45,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedButton
+import com.example.myapplication.ui.Bill
+import com.google.firebase.database.FirebaseDatabase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +101,10 @@ fun AddNewBillPage(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 OutlinedButton(
-                    onClick = { isIncome = true },
+                    onClick = {
+                        isIncome = true
+                        selectedCategory = incomeCategories[0]
+                    },
                     shape = RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp),
                     border = BorderStroke(1.dp, Color.Black),
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -115,7 +120,10 @@ fun AddNewBillPage(
                 }
 
                 OutlinedButton(
-                    onClick = { isIncome = false },
+                    onClick = {
+                        isIncome = false
+                        selectedCategory = expenditureCategories[0]
+                    },
                     shape = RoundedCornerShape(topEnd = 50.dp, bottomEnd = 50.dp),
                     border = BorderStroke(1.dp, Color.Black),
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -130,9 +138,6 @@ fun AddNewBillPage(
                     )
                 }
             }
-
-            // 更新类别选项
-            selectedCategory = categories[0]
 
             // 类别选择框
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -220,13 +225,67 @@ fun AddNewBillPage(
 
             // 确认记录按钮
             Button(
-                onClick = { /* 处理确认逻辑 */ },
+                onClick = {  // 检查输入是否合法
+                    if (remark.isNotBlank() && amount.isNotBlank() && selectedDate.isNotBlank()) {
+                        val id = System.currentTimeMillis().toInt() // 使用当前时间戳生成唯一 ID
+                        val parsedAmount = amount.toDoubleOrNull() ?: 0.0
+
+                        // 调用上传函数
+                        uploadBillToFirebase(
+                            id = id,
+                            isIncome = isIncome,
+                            category = selectedCategory,
+                            remarks = remark,
+                            amount = parsedAmount,
+                            date = selectedDate
+                        )
+
+                        // 清空表单内容并导航回主页面
+                        remark = ""
+                        amount = ""
+                        selectedDate = appViewModel.getTodayDate()
+                        navController.navigate("main")
+                    } else {
+                        // 处理非法输入，例如提示用户补全表单
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(text = "Add")
             }
         }
     }
+}
+
+private fun uploadBillToFirebase(
+    id: Int,
+    isIncome: Boolean,
+    category: String,
+    remarks: String,
+    amount: Double,
+    date: String
+) {
+    val database = FirebaseDatabase.getInstance()
+    val reference = database.getReference("bills")
+
+    // 将数据封装为 Bill 对象
+    val newBill = Bill(
+        id = id,
+        isIncome = isIncome,
+        category = category,
+        remarks = remarks,
+        amount = amount,
+        date = date
+    )
+
+    // 上传数据
+    reference.child(id.toString()).setValue(newBill)
+        .addOnSuccessListener {
+            // 数据上传成功处理，例如显示提示
+        }
+        .addOnFailureListener {
+            // 数据上传失败处理，例如显示错误提示
+        }
 }
 
 

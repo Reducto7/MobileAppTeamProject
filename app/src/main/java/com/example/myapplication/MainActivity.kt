@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 NavHost(
                     navController = navController,
-                    startDestination = "login"
+                    startDestination = "addNewBill"
                 ) {
                     composable(route = "login") {
                         LoginPage(navController, context = this@MainActivity)

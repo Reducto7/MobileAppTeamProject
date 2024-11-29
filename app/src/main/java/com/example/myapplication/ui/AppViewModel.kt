@@ -3,13 +3,47 @@ package com.example.teamproject.ui
 import android.app.DatePickerDialog
 import android.content.Context
 import android.view.View
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.myapplication.ui.Bill
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 class AppViewModel:ViewModel() {
+    private val _bills = MutableLiveData<List<Bill>>()
+    val bills: LiveData<List<Bill>> get() = _bills
+
+    private val database = FirebaseDatabase.getInstance()
+    private val reference = database.getReference("bills")
+
+    init {
+        fetchBills()
+    }
+    //监听 Firebase 数据库并将其加载到 UI 可用的 LiveData 中
+    private fun fetchBills() {
+        reference.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val billList = mutableListOf<Bill>()
+                for (billSnapshot in snapshot.children) {
+                    val bill = billSnapshot.getValue(Bill::class.java)
+                    bill?.let { billList.add(it) }
+                }
+                _bills.value = billList
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // 错误处理
+            }
+        })
+    }
+
     // 弹出日期选择器对话框
     fun showDatePicker(context: Context, onDateSelected: (String) -> Unit) {
         val calendar = Calendar.getInstance()

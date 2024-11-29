@@ -25,33 +25,38 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
-data class Bill(
-    val id: Int,
-    val isIncome: Boolean,
-    val category: String,
-    val remarks: String,
-    val amount: Double,
-    val date: String
-)
 
 class BillViewModel : ViewModel() {
+    private val database: DatabaseReference = FirebaseDatabase.getInstance().getReference("bills")
     private val _bills = mutableStateListOf<Bill>()
     val bills: List<Bill> get() = _bills
 
-    fun addBill(bill: Bill) {
-        _bills.add(bill)
+    init {
+        fetchBillsFromDatabase()
     }
 
-    fun refreshBills() {
-        // 模拟数据
-        _bills.clear()
-        _bills.addAll(
-            listOf(
-                Bill(id = 1, isIncome = false, category = "Food", remarks = "Lunch", amount = 30.0, date = "2024-11-22"),
-                Bill(id = 2, isIncome = false, category = "Drink", remarks = "Coffee", amount = 15.0, date = "2024-11-21")
-            )
-        )
+    private fun fetchBillsFromDatabase() {
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                _bills.clear()
+                for (child in snapshot.children) {
+                    val bill = child.getValue(Bill::class.java)
+                    if (bill != null) {
+                        _bills.add(bill)
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Log error (if needed)
+            }
+        })
     }
 }
 
@@ -101,32 +106,21 @@ fun BillItem(bill: Bill, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainPage(navController: NavController, modifier: Modifier = Modifier, viewModel: BillViewModel = viewModel()) {
+fun MainPage(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    viewModel: BillViewModel = viewModel()
+) {
     val bills by remember { derivedStateOf { viewModel.bills } }
-    var totalIncome by remember { mutableStateOf(0.0) }
-    var totalExpense by remember { mutableStateOf(0.0) }
+    val totalIncome by remember { derivedStateOf {
+        bills.filter { it.isIncome }.sumOf { it.amount }
+    } }
+    val totalExpense by remember { derivedStateOf {
+        bills.filter { !it.isIncome }.sumOf { it.amount }
+    } }
 
     var isRefreshing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
-
-    // 添加模拟账单数据
-    LaunchedEffect(Unit) {
-        viewModel.addBill(Bill(id = 1, isIncome = false, category = "Food", remarks = "Lunch", amount = 30.0, date = "2024-11-22"))
-        viewModel.addBill(Bill(id = 2, isIncome = false, category = "Drink", remarks = "Coffee", amount = 15.0, date = "2024-11-21"))
-        viewModel.addBill(Bill(id = 3, isIncome = false, category = "Transport", remarks = "Bus Ticket", amount = 10.0, date = "2024-11-20"))
-        viewModel.addBill(Bill(id = 4, isIncome = true, category = "Salary", remarks = "November Salary", amount = 3000.0, date = "2024-11-19"))
-        viewModel.addBill(Bill(id = 5, isIncome = false, category = "Entertainment", remarks = "Movie", amount = 50.0, date = "2024-11-18"))
-        viewModel.addBill(Bill(id = 6, isIncome = false, category = "Groceries", remarks = "Supermarket", amount = 120.0, date = "2024-11-17"))
-        viewModel.addBill(Bill(id = 7, isIncome = true, category = "Freelance", remarks = "Freelance Project", amount = 500.0, date = "2024-11-16"))
-        viewModel.addBill(Bill(id = 8, isIncome = false, category = "Utilities", remarks = "Electricity Bill", amount = 60.0, date = "2024-11-15"))
-        viewModel.addBill(Bill(id = 9, isIncome = false, category = "Shopping", remarks = "Clothes", amount = 200.0, date = "2024-11-14"))
-        viewModel.addBill(Bill(id = 10, isIncome = true, category = "Gift", remarks = "Birthday Gift", amount = 100.0, date = "2024-11-13"))
-
-        // 更新总收入和总支出
-        totalIncome = viewModel.bills.filter { it.isIncome }.sumOf { it.amount }
-        totalExpense = viewModel.bills.filter { !it.isIncome }.sumOf { it.amount }
-    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -172,9 +166,7 @@ fun MainPage(navController: NavController, modifier: Modifier = Modifier, viewMo
                 )
             }
         }
-    )
-
-    { innerPadding ->
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -183,12 +175,8 @@ fun MainPage(navController: NavController, modifier: Modifier = Modifier, viewMo
             SwipeRefresh(
                 state = swipeRefreshState,
                 onRefresh = {
-                    scope.launch {
-                        isRefreshing = true
-                        delay(1000)
-                        // 在此刷新操作中重新加载数据
-                        isRefreshing = false
-                    }
+                    isRefreshing = true
+                    isRefreshing = false
                 }
             ) {
                 Column(
@@ -218,9 +206,10 @@ fun MainPage(navController: NavController, modifier: Modifier = Modifier, viewMo
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    Divider(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
+                    Divider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
                         color = Color.LightGray
                     )
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
