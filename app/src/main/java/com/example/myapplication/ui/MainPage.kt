@@ -46,11 +46,17 @@ class BillViewModel : ViewModel() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 _bills.clear()
                 for (child in snapshot.children) {
-                    val bill = child.getValue(Bill::class.java)
-                    if (bill != null) {
-                        _bills.add(bill)
-                    }
+                    val id = child.child("id").getValue(Int::class.java) ?: 0
+                    val isIncome = child.child("income").getValue(Boolean::class.java) ?: false // 适配字段名
+                    val category = child.child("category").getValue(String::class.java) ?: ""
+                    val remarks = child.child("remarks").getValue(String::class.java) ?: ""
+                    val amount = child.child("amount").getValue(Double::class.java) ?: 0.0
+                    val date = child.child("date").getValue(String::class.java) ?: ""
+
+                    val bill = Bill(id, isIncome, category, remarks, amount, date)
+                    _bills.add(bill)
                 }
+                println("加载的账单数据: $_bills")
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -112,12 +118,16 @@ fun MainPage(
     viewModel: BillViewModel = viewModel()
 ) {
     val bills by remember { derivedStateOf { viewModel.bills } }
-    val totalIncome by remember { derivedStateOf {
-        bills.filter { it.isIncome }.sumOf { it.amount }
-    } }
-    val totalExpense by remember { derivedStateOf {
-        bills.filter { !it.isIncome }.sumOf { it.amount }
-    } }
+    val totalIncome by remember {
+        derivedStateOf {
+            bills.filter { it.isIncome }.sumOf { it.amount }
+        }
+    }
+    val totalExpense by remember {
+        derivedStateOf {
+            bills.filter { !it.isIncome }.sumOf { it.amount }
+        }
+    }
 
     var isRefreshing by remember { mutableStateOf(false) }
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
