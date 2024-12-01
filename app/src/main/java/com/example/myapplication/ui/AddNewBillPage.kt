@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.OutlinedButton
 import com.example.myapplication.ui.Bill
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -266,26 +267,32 @@ private fun uploadBillToFirebase(
     date: String
 ) {
     val database = FirebaseDatabase.getInstance()
-    val reference = database.getReference("bills")
 
-    // 将数据封装为 Bill 对象
-    val newBill = Bill(
-        id = id,
-        isIncome = isIncome,
-        category = category,
-        remarks = remarks,
-        amount = amount,
-        date = date
-    )
+    val userId = FirebaseAuth.getInstance().currentUser?.uid // 获取当前用户的 UID
+    if (userId != null) {
+        val reference = database.getReference("bills").child(userId) // 将账单存储在当前用户的 UID 下
 
-    // 上传数据
-    reference.child(id.toString()).setValue(newBill)
-        .addOnSuccessListener {
-            // 数据上传成功处理，例如显示提示
-        }
-        .addOnFailureListener {
-            // 数据上传失败处理，例如显示错误提示
-        }
+        // 将数据封装为 Bill 对象
+        val newBill = Bill(
+            id = id,
+            isIncome = isIncome,
+            category = category,
+            remarks = remarks,
+            amount = amount,
+            date = date
+        )
+
+        // 上传数据
+        reference.child(id.toString()).setValue(newBill)
+            .addOnSuccessListener {
+                // 数据上传成功处理，例如显示提示
+            }
+            .addOnFailureListener {
+                // 数据上传失败处理，例如显示错误提示
+            }
+    } else {
+        // 用户未登录的情况，处理错误
+    }
 }
 
 

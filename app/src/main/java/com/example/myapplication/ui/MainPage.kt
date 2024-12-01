@@ -25,6 +25,7 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -42,28 +43,30 @@ class BillViewModel : ViewModel() {
     }
 
     private fun fetchBillsFromDatabase() {
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _bills.clear()
-                for (child in snapshot.children) {
-                    val id = child.child("id").getValue(Int::class.java) ?: 0
-                    val isIncome = child.child("income").getValue(Boolean::class.java) ?: false // 适配字段名
-                    val category = child.child("category").getValue(String::class.java) ?: ""
-                    val remarks = child.child("remarks").getValue(String::class.java) ?: ""
-                    val amount = child.child("amount").getValue(Double::class.java) ?: 0.0
-                    val date = child.child("date").getValue(String::class.java) ?: ""
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            database.child(userId).addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    _bills.clear()
+                    for (child in snapshot.children) {
+                        val id = child.child("id").getValue(Int::class.java) ?: 0
+                        val isIncome = child.child("income").getValue(Boolean::class.java) ?: false
+                        val category = child.child("category").getValue(String::class.java) ?: ""
+                        val remarks = child.child("remarks").getValue(String::class.java) ?: ""
+                        val amount = child.child("amount").getValue(Double::class.java) ?: 0.0
+                        val date = child.child("date").getValue(String::class.java) ?: ""
 
-                    val bill = Bill(id, isIncome, category, remarks, amount, date)
-                    _bills.add(bill)
+                        val bill = Bill(id, isIncome, category, remarks, amount, date)
+                        _bills.add(bill)
+                    }
+                    println("加载的账单数据: $_bills")
                 }
-                println("加载的账单数据: $_bills")
-            }
 
             override fun onCancelled(error: DatabaseError) {
                 // Log error (if needed)
             }
         })
-    }
+    }}
 }
 
 
