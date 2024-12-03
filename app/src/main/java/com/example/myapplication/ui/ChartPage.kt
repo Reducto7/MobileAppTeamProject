@@ -54,6 +54,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -65,16 +66,179 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.DpOffset
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+
+class ChartViewModel : ViewModel() {
+    private val database: DatabaseReference = FirebaseDatabase.getInstance().getReference("bills")
+    private val _bills = mutableStateListOf<Bill>()
+    val bills: List<Bill> get() = _bills
+
+    val monthData: MutableMap<String, List<Double>> = mutableMapOf()
+    val yearData: MutableMap<Int, List<Double>> = mutableMapOf()
+
+    init {
+        fetchBillsFromDatabase()
+    }
+
+    private fun fetchBillsFromDatabase() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            database.child(userId).addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    _bills.clear()
+                    snapshot.children.mapNotNull { it.toBill() }.let { _bills.addAll(it) }
+                    println("加载的账单数据: $_bills")
+                    updateData() // 数据加载完成后更新 monthData
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    println("数据加载失败: ${error.message}")
+                }
+            })
+        }
+    }
+    private fun updateData() {
+        monthData["October"] = getDailyIncomeExpenditure(2024, 10, false)
+        monthData["November"] = getDailyIncomeExpenditure(2024, 11, false)
+        monthData["December"] = getDailyIncomeExpenditure(2024, 12, false)
+
+        yearData[2024] = getMonthlyIncomeExpenditure(2024,false)
+    }
+
+
+    private fun DataSnapshot.toBill(): Bill? {
+        return try {
+            val id = child("id").getValue(Int::class.java) ?: 0
+            val isIncome = child("income").getValue(Boolean::class.java) ?: false
+            val category = child("category").getValue(String::class.java) ?: ""
+            val remarks = child("remarks").getValue(String::class.java) ?: ""
+            val amount = child("amount").getValue(Double::class.java) ?: 0.0
+            val date = child("date").getValue(String::class.java) ?: ""
+
+            Bill(id, isIncome, category, remarks, amount, date)
+        } catch (e: Exception) {
+            println("数据解析失败: $e")
+            null
+        }
+    }
+
+    // 计算某月每天的收入或支出总和
+    fun getDailyIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): List<Double> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    billDate[1] == month &&
+                    it.isIncome == isIncome
+        }
+
+        val daysInMonth = when (month) {
+            2 -> if (isLeapYear(year)) 29 else 28
+            4, 6, 9, 11 -> 30
+            else -> 31
+        }
+
+        val dailyTotals = MutableList(daysInMonth) { 0.0 }
+
+        filteredBills.forEach {
+            val day = it.date.split("-")[2].toIntOrNull() ?: 1
+            if (day in 1..daysInMonth) dailyTotals[day - 1] += it.amount
+        }
+
+        return dailyTotals
+    }
+
+    // 计算某年每月的收入或支出总和
+    fun getMonthlyIncomeExpenditure(year: Int, isIncome: Boolean): List<Double> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    it.isIncome == isIncome
+        }
+
+        val monthlyTotals = MutableList(12) { 0.0 }
+
+        filteredBills.forEach {
+            val month = it.date.split("-")[1].toIntOrNull() ?: 1
+            if (month in 1..12) monthlyTotals[month - 1] += it.amount
+        }
+
+        return monthlyTotals
+    }
+
+    // 判断是否为闰年
+    private fun isLeapYear(year: Int): Boolean {
+        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    }
+}
+
+
+
+/*
+class ChartViewModel : ViewModel() {
+    private val _bills = MutableLiveData<List<Bill>>()
+    val bills: LiveData<List<Bill>> get() = _bills
+
+    private val database = FirebaseDatabase.getInstance()
+    private val reference = database.getReference("bills")
+
+    // 计算某月每天的收入或支出总和
+    fun getDailyIncomeExpenditure(month: String, isIncome: Boolean): Map<String, Double> {
+        val billsInMonth = _bills.value?.filter { it.date.startsWith(month) && it.isIncome == isIncome }
+        return billsInMonth?.groupBy { it.date }?.mapValues { entry ->
+            entry.value.sumOf { it.amount }
+        } ?: emptyMap()
+    }
+
+    // 计算某年每月的收入或支出总和
+    fun getMonthlyIncomeExpenditure(year: String, isIncome: Boolean): Map<String, Double> {
+        val billsInYear = _bills.value?.filter { it.date.startsWith(year) && it.isIncome == isIncome }
+        return billsInYear?.groupBy { it.date.substring(0, 7) }?.mapValues { entry ->
+            entry.value.sumOf { it.amount }
+        } ?: emptyMap()
+    }
+
+    val monthData = mapOf(
+        "October" to (1..31).map { day ->
+            // 通过 getDailyIncomeExpenditure 获取每一天的支出总和
+            val dailyTotal = getDailyIncomeExpenditure("2024-10-$day", isIncome = false) // 获取10月的支出总和
+            dailyTotal.getOrDefault("2024-10-$day", 0.0) // 如果该天没有数据，则返回0
+        },
+        "November" to (1..30).map { day ->
+            // 通过 getDailyIncomeExpenditure 获取每一天的支出总和
+            val dailyTotal = getDailyIncomeExpenditure("2024-11-$day", isIncome = false) // 获取11月的支出总和
+            dailyTotal.getOrDefault("2024-11-$day", 0.0) // 如果该天没有数据，则返回0
+        },
+        "December" to (1..31).map { day ->
+            // 通过 getDailyIncomeExpenditure 获取每一天的支出总和
+            val dailyTotal = getDailyIncomeExpenditure("2024-12-$day", isIncome = false) // 获取12月的支出总和
+            dailyTotal.getOrDefault("2024-12-$day", 0.0) // 如果该天没有数据，则返回0
+        }
+    )
+}
+
+ */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartPage(
-    navController: NavController
+    navController: NavController,
+    viewModel: ChartViewModel = viewModel()
 ) {
     // 选中点的索引
     var selectedIndex by remember { mutableStateOf(-1) }
 
-    var dataPoints by remember { mutableStateOf(listOf<Float>()) }
+    var dataPoints by remember { mutableStateOf(listOf<Double>()) }
     var xAxisLabels by remember { mutableStateOf(listOf<String>()) }
     var isYearSelected by remember { mutableStateOf(false) } // 外部管理的状态
     var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
@@ -95,23 +259,23 @@ fun ChartPage(
     // 模拟数据(折线图)
     val simulatedMonthData = mapOf(
         "October" to listOf(
-            150f, 100f, 300f, 150f, 400f, 0f, 200f, 200f, 150f, 200f,
-            500f, 100f, 0f, 150f, 200f, 250f, 100f, 200f, 150f, 100f,
-            250f, 300f, 200f, 0f, 300f, 250f, 200f, 150f, 400f, 250f,
-            100f
+            150.0, 100.0, 300.0, 150.0, 400.0, 0.0, 200.0, 200.0, 150.0, 200.0,
+            500.0, 100.0, 0.0, 150.0, 200.0, 250.0, 100.0, 200.0, 150.0, 100.0,
+            250.0, 300.0, 200.0, 0.0, 300.0, 250.0, 200.0, 150.0, 400.0, 250.0,
+            100.0
         ),
         "November" to listOf(
-            250f, 100f, 200f, 150f, 400f, 250f, 50f, 200f, 150f, 100f,
-            250f, 100f, 200f, 150f, 200f, 250f, 100f, 200f, 150f, 300f,
-            250f, 100f, 150f, 150f, 300f,250f, 100f, 150f, 150f, 400f
+            250.0, 100.0, 200.0, 150.0, 400.0, 250.0, 50.0, 200.0, 150.0, 100.0,
+            250.0, 100.0, 200.0, 150.0, 200.0, 250.0, 100.0, 200.0, 150.0, 300.0,
+            250.0, 100.0, 150.0, 150.0, 300.0, 250.0, 100.0, 150.0, 150.0, 400.0
         )
     )
 
     val simulatedYearData = mapOf(
-        2023 to listOf(1500f, 1100f, 4200f, 500f, 3000f, 2600f, 400f, 2200f, 600f, 1200f, 1500f, 2800f),
-        2024 to listOf(1000f, 1500f, 2300f, 800f, 3000f, 1800f, 2000f, 3800f, 500f, 1300f, 1200f, 2400f)
-        // 添加其他年份数据
+        2023 to listOf(1500.0, 1100.0, 4200.0, 500.0, 3000.0, 2600.0, 400.0, 2200.0, 600.0, 1200.0, 1500.0, 2800.0),
+        2024 to listOf(1000.0, 1500.0, 2300.0, 800.0, 3000.0, 1800.0, 2000.0, 3800.0, 500.0, 1300.0, 1200.0, 2400.0)
     )
+
 
 // 模拟数据（柱状图）
     val simulatedMonthBarData = mapOf(
@@ -127,7 +291,7 @@ fun ChartPage(
 
     // 初始化默认值
     LaunchedEffect(Unit) {
-        dataPoints = simulatedMonthData[currentMonth] ?: List(31) { 0f }
+        dataPoints = viewModel.monthData[currentMonth]?.map { it } ?: List(31) { 0.0 }
         barChartData = simulatedMonthBarData[currentMonth] ?: emptyList()
         xAxisLabels = generateXAxisLabels(dataPoints.size)
     }
@@ -198,15 +362,16 @@ fun ChartPage(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             // 时间选择器
             TimeSelection(
                 onMonthYearSelected = { month, year ->
                     if (isYearSelected) {
-                        val yearData = simulatedYearData[year] ?: List(12) { 0f }
+                        val yearData = viewModel.yearData[year]?.map { it.toDouble() } ?: List(12) { 0.0 }
                         dataPoints = yearData
                         xAxisLabels = generateXAxisLabelsForYear()
                     } else {
-                        val monthData = simulatedMonthData[month] ?: List(31) { 0f }
+                        val monthData = viewModel.monthData[month]?.map { it.toDouble() } ?: List(31) { 0.0 }
                         dataPoints = monthData
                         xAxisLabels = generateXAxisLabels(monthData.size)
                     }
@@ -216,10 +381,10 @@ fun ChartPage(
                 onSelectionChanged = { isYear ->
                     isYearSelected = isYear
                     if (isYear) {
-                        dataPoints = simulatedYearData[currentYear] ?: List(12) { 0f }
+                        dataPoints = viewModel.yearData[currentYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
                         xAxisLabels = generateXAxisLabelsForYear()
                     } else {
-                        dataPoints = simulatedMonthData[currentMonth] ?: List(31) { 0f }
+                        dataPoints = viewModel.monthData[currentMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
                         xAxisLabels = generateXAxisLabels(dataPoints.size)
                     }
                     selectedIndex = -1 // 重置选中状态
@@ -235,7 +400,7 @@ fun ChartPage(
 
             // 折线图
             CustomLineChart(
-                dataPoints = dataPoints,
+                dataPoints = dataPoints.map { it.toFloat() },
                 xAxisLabels = xAxisLabels,
                 selectedIndex = selectedIndex,
                 onSelectedIndexChanged = { newIndex ->
