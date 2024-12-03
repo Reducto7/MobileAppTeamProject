@@ -76,6 +76,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.util.Calendar
 
 class ChartViewModel : ViewModel() {
     private val database: DatabaseReference = FirebaseDatabase.getInstance().getReference("bills")
@@ -84,6 +85,8 @@ class ChartViewModel : ViewModel() {
 
     val monthData: MutableMap<String, List<Double>> = mutableMapOf()
     val yearData: MutableMap<Int, List<Double>> = mutableMapOf()
+
+    var isIncomeSelected by mutableStateOf(false) // 控制收入或支出
 
     init {
         fetchBillsFromDatabase()
@@ -106,12 +109,26 @@ class ChartViewModel : ViewModel() {
             })
         }
     }
-    private fun updateData() {
-        monthData["October"] = getDailyIncomeExpenditure(2024, 10, false)
-        monthData["November"] = getDailyIncomeExpenditure(2024, 11, false)
-        monthData["December"] = getDailyIncomeExpenditure(2024, 12, false)
+   fun updateData() {
+        monthData["January"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
+        monthData["February"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
+        monthData["March"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
+        monthData["April"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
+        monthData["May"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
+        monthData["June"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
+        monthData["July"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
+        monthData["August"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
+        monthData["September"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
+        monthData["October"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
+        monthData["November"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
+        monthData["December"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
 
-        yearData[2024] = getMonthlyIncomeExpenditure(2024,false)
+        // 更新年数据
+        yearData[2020] = getMonthlyIncomeExpenditure(2020, isIncomeSelected)
+        yearData[2021] = getMonthlyIncomeExpenditure(2021, isIncomeSelected)
+        yearData[2022] = getMonthlyIncomeExpenditure(2022, isIncomeSelected)
+        yearData[2023] = getMonthlyIncomeExpenditure(2023, isIncomeSelected)
+        yearData[2024] = getMonthlyIncomeExpenditure(2024, isIncomeSelected)
     }
 
 
@@ -182,53 +199,6 @@ class ChartViewModel : ViewModel() {
     }
 }
 
-
-
-/*
-class ChartViewModel : ViewModel() {
-    private val _bills = MutableLiveData<List<Bill>>()
-    val bills: LiveData<List<Bill>> get() = _bills
-
-    private val database = FirebaseDatabase.getInstance()
-    private val reference = database.getReference("bills")
-
-    // 计算某月每天的收入或支出总和
-    fun getDailyIncomeExpenditure(month: String, isIncome: Boolean): Map<String, Double> {
-        val billsInMonth = _bills.value?.filter { it.date.startsWith(month) && it.isIncome == isIncome }
-        return billsInMonth?.groupBy { it.date }?.mapValues { entry ->
-            entry.value.sumOf { it.amount }
-        } ?: emptyMap()
-    }
-
-    // 计算某年每月的收入或支出总和
-    fun getMonthlyIncomeExpenditure(year: String, isIncome: Boolean): Map<String, Double> {
-        val billsInYear = _bills.value?.filter { it.date.startsWith(year) && it.isIncome == isIncome }
-        return billsInYear?.groupBy { it.date.substring(0, 7) }?.mapValues { entry ->
-            entry.value.sumOf { it.amount }
-        } ?: emptyMap()
-    }
-
-    val monthData = mapOf(
-        "October" to (1..31).map { day ->
-            // 通过 getDailyIncomeExpenditure 获取每一天的支出总和
-            val dailyTotal = getDailyIncomeExpenditure("2024-10-$day", isIncome = false) // 获取10月的支出总和
-            dailyTotal.getOrDefault("2024-10-$day", 0.0) // 如果该天没有数据，则返回0
-        },
-        "November" to (1..30).map { day ->
-            // 通过 getDailyIncomeExpenditure 获取每一天的支出总和
-            val dailyTotal = getDailyIncomeExpenditure("2024-11-$day", isIncome = false) // 获取11月的支出总和
-            dailyTotal.getOrDefault("2024-11-$day", 0.0) // 如果该天没有数据，则返回0
-        },
-        "December" to (1..31).map { day ->
-            // 通过 getDailyIncomeExpenditure 获取每一天的支出总和
-            val dailyTotal = getDailyIncomeExpenditure("2024-12-$day", isIncome = false) // 获取12月的支出总和
-            dailyTotal.getOrDefault("2024-12-$day", 0.0) // 如果该天没有数据，则返回0
-        }
-    )
-}
-
- */
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartPage(
@@ -243,56 +213,45 @@ fun ChartPage(
     var isYearSelected by remember { mutableStateOf(false) } // 外部管理的状态
     var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
 
+    var selectedYear by remember { mutableStateOf<Int?>(null) }
+    var selectedMonth by remember { mutableStateOf<String?>(null) } // 默认没有选择月份
 
-    // 动态获取当前年份和月份
-    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-    val currentMonthIndex = java.util.Calendar.getInstance().get(java.util.Calendar.MONTH)
     val months = listOf(
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     )
-    val currentMonth = months[currentMonthIndex]
+    val years = (2020..2024).toList()
 
-    var selectedOption by remember { mutableStateOf("Income Chart") } // 动态标题内容
+    var selectedOption by remember { mutableStateOf("Expenditure Chart") } // 动态标题内容
     var isDropdownExpanded by remember { mutableStateOf(false) } // 控制下拉框显示
 
-    // 模拟数据(折线图)
-    val simulatedMonthData = mapOf(
-        "October" to listOf(
-            150.0, 100.0, 300.0, 150.0, 400.0, 0.0, 200.0, 200.0, 150.0, 200.0,
-            500.0, 100.0, 0.0, 150.0, 200.0, 250.0, 100.0, 200.0, 150.0, 100.0,
-            250.0, 300.0, 200.0, 0.0, 300.0, 250.0, 200.0, 150.0, 400.0, 250.0,
-            100.0
-        ),
-        "November" to listOf(
-            250.0, 100.0, 200.0, 150.0, 400.0, 250.0, 50.0, 200.0, 150.0, 100.0,
-            250.0, 100.0, 200.0, 150.0, 200.0, 250.0, 100.0, 200.0, 150.0, 300.0,
-            250.0, 100.0, 150.0, 150.0, 300.0, 250.0, 100.0, 150.0, 150.0, 400.0
-        )
-    )
+    // 初始化默认值
+    LaunchedEffect(viewModel.isIncomeSelected) {
+        // 当收入/支出选项变化时，更新数据
+        if (isYearSelected) {
+            val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
+            dataPoints = yearData
+            xAxisLabels = generateXAxisLabelsForYear()
+        } else {
+            val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
+            dataPoints = monthData
+            xAxisLabels = generateXAxisLabels(monthData.size)
+        }
+    }
 
-    val simulatedYearData = mapOf(
-        2023 to listOf(1500.0, 1100.0, 4200.0, 500.0, 3000.0, 2600.0, 400.0, 2200.0, 600.0, 1200.0, 1500.0, 2800.0),
-        2024 to listOf(1000.0, 1500.0, 2300.0, 800.0, 3000.0, 1800.0, 2000.0, 3800.0, 500.0, 1300.0, 1200.0, 2400.0)
-    )
-
-
-// 模拟数据（柱状图）
+    // 模拟数据（柱状图）
     val simulatedMonthBarData = mapOf(
         "October" to listOf("Food" to 300f, "Shopping" to 301f, "Rent" to 230f, "Daily" to 200f, "Transport" to 100f, "Stocks" to 150f, "Utilities" to 180f, "Healthcare" to 210f, "Education" to 120f, "Entertainment" to 250f, "Others" to 90f),
         "November" to listOf("Food" to 250f, "Shopping" to 220f, "Rent" to 100f, "Daily" to 150f, "Transport" to 200f, "Stocks" to 150f, "Utilities" to 170f, "Healthcare" to 190f, "Education" to 140f, "Entertainment" to 230f, "Others" to 80f)
     )
-
     val simulatedYearBarData = mapOf(
         2023 to listOf("Food" to 3600f, "Shopping" to 4200f, "Rent" to 4600f, "Daily" to 2400f, "Transport" to 3600f, "Stocks" to 1500f, "Utilities" to 2000f, "Healthcare" to 2200f, "Education" to 1800f, "Entertainment" to 2700f, "Others" to 1300f),
         2024 to listOf("Food" to 3200f, "Shopping" to 4800f, "Rent" to 4200f, "Daily" to 2200f, "Transport" to 3800f, "Stocks" to 1500f, "Utilities" to 2100f, "Healthcare" to 2300f, "Education" to 1900f, "Entertainment" to 2600f, "Others" to 1400f)
     )
 
-
     // 初始化默认值
     LaunchedEffect(Unit) {
-        dataPoints = viewModel.monthData[currentMonth]?.map { it } ?: List(31) { 0.0 }
-        barChartData = simulatedMonthBarData[currentMonth] ?: emptyList()
+        dataPoints = List(31) { 0.0 } // 空的折线图数据
         xAxisLabels = generateXAxisLabels(dataPoints.size)
     }
 
@@ -338,6 +297,9 @@ fun ChartPage(
                             onClick = {
                                 // 更新逻辑为收入图表
                                 selectedOption = "Income Chart" // 更新标题
+                                viewModel.isIncomeSelected = true
+                                viewModel.updateData()  // 更新数据
+
                                 isDropdownExpanded = false
                             }
                         )
@@ -346,6 +308,8 @@ fun ChartPage(
                             onClick = {
                                 // 更新逻辑为支出图表
                                 selectedOption = "Expenditure Chart" // 更新标题
+                                viewModel.isIncomeSelected = false
+                                viewModel.updateData()  // 更新数据
                                 isDropdownExpanded = false
                             }
                         )
@@ -362,38 +326,109 @@ fun ChartPage(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             // 时间选择器
-            TimeSelection(
-                onMonthYearSelected = { month, year ->
+            val yearListState = rememberLazyListState()
+            val monthListState = rememberLazyListState()
+
+            // 通知选择更改
+            LaunchedEffect(selectedMonth, selectedYear) {
+                if (isYearSelected) {
+                    val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
+                    dataPoints = yearData
+                    xAxisLabels = generateXAxisLabelsForYear()
+                } else {
+                    val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
+                    dataPoints = monthData
+                    xAxisLabels = generateXAxisLabels(monthData.size)
+                }
+                selectedIndex = -1 // 重置选中状态
+            }
+
+            LaunchedEffect(Unit) {
                     if (isYearSelected) {
-                        val yearData = viewModel.yearData[year]?.map { it.toDouble() } ?: List(12) { 0.0 }
-                        dataPoints = yearData
-                        xAxisLabels = generateXAxisLabelsForYear()
+                        yearListState.scrollToItem(years.indexOf(selectedYear))
                     } else {
-                        val monthData = viewModel.monthData[month]?.map { it.toDouble() } ?: List(31) { 0.0 }
+                        monthListState.scrollToItem(months.indexOf("December"))
+                    }
+
+            }
+
+            // 切换按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(
+                    onClick = {
+                        isYearSelected = false // 切换到月份模式
+                        val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
                         dataPoints = monthData
                         xAxisLabels = generateXAxisLabels(monthData.size)
-                    }
-                    selectedIndex = -1 // 重置选中状态
-                },
-                isYearSelected = isYearSelected,
-                onSelectionChanged = { isYear ->
-                    isYearSelected = isYear
-                    if (isYear) {
-                        dataPoints = viewModel.yearData[currentYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
-                        xAxisLabels = generateXAxisLabelsForYear()
-                    } else {
-                        dataPoints = viewModel.monthData[currentMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
-                        xAxisLabels = generateXAxisLabels(dataPoints.size)
-                    }
-                    selectedIndex = -1 // 重置选中状态
-                },
-                currentYear = currentYear,
-                currentMonth = currentMonth
-            )
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isYearSelected) Color.White else Color.Black,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
+                    border = BorderStroke(1.dp, Color.Black)
+                ) {
+                    Text(
+                        text = "Month",
+                        color = if (isYearSelected) Color.Black else Color.White
+                    )
+                }
 
-            //Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = {
+                        isYearSelected = true // 切换到年份模式
+                        val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
+                        dataPoints = yearData
+                        xAxisLabels = generateXAxisLabelsForYear()
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isYearSelected) Color.Black else Color.White,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp),
+                    border = BorderStroke(1.dp, Color.Black)
+                ) {
+                    Text(
+                        text = "Year",
+                        color = if (isYearSelected) Color.White else Color.Black
+                    )
+                }
+            }
+
+            // 显示月份或年份列表
+            if (isYearSelected) {
+                LazyRow(state = yearListState) {
+                    items(years) { year ->
+                        Text(
+                            text = year.toString(),
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .clickable { selectedYear = year },
+                            color = if (selectedYear == year) Color.Black else Color.Gray
+                        )
+                    }
+                }
+            } else {
+                LazyRow(state = monthListState) {
+                    items(months) { month ->
+                        Text(
+                            text = month,
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .clickable { selectedMonth = month },
+                            color = if (selectedMonth == month) Color.Black else Color.Gray
+                        )
+                    }
+                }
+            }
 
             // Line Chart分隔线
             DividerWithText("Chart Table")
@@ -422,109 +457,6 @@ fun ChartPage(
     }
 }
 
-@Composable
-fun TimeSelection(
-    onMonthYearSelected: (String, Int) -> Unit,
-    isYearSelected: Boolean,
-    onSelectionChanged: (Boolean) -> Unit,
-    currentYear: Int,
-    currentMonth: String
-) {
-    val years = (2020..2025).toList()
-    val months = listOf(
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    )
-
-    var selectedYear by remember { mutableStateOf(currentYear) }
-    var selectedMonth by remember { mutableStateOf(currentMonth) }
-
-    val yearListState = rememberLazyListState()
-    val monthListState = rememberLazyListState()
-
-    // 通知选择更改
-    LaunchedEffect(selectedMonth, selectedYear) {
-        onMonthYearSelected(selectedMonth, selectedYear)
-    }
-
-    LaunchedEffect(Unit) {
-        if (isYearSelected) {
-            yearListState.scrollToItem(years.indexOf(currentYear))
-        } else {
-            monthListState.scrollToItem(months.indexOf(currentMonth))
-        }
-    }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(
-                onClick = {
-                    onSelectionChanged(false) // 切换到月份模式
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isYearSelected) Color.White else Color.Black,
-                    contentColor = Color.White
-                ),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
-                border = BorderStroke(1.dp, Color.Black)
-            ) {
-                Text(
-                    text = "Month",
-                    color = if (isYearSelected) Color.Black else Color.White
-                )
-            }
-
-            Button(
-                onClick = {
-                    onSelectionChanged(true) // 切换到年份模式
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (isYearSelected) Color.Black else Color.White,
-                    contentColor = Color.White
-                ),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp),
-                border = BorderStroke(1.dp, Color.Black)
-            ) {
-                Text(
-                    text = "Year",
-                    color = if (isYearSelected) Color.White else Color.Black
-                )
-            }
-        }
-
-        if (isYearSelected) {
-            LazyRow(state = yearListState) {
-                items(years) { year ->
-                    Text(
-                        text = year.toString(),
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clickable { selectedYear = year },
-                        color = if (selectedYear == year) Color.Black else Color.Gray
-                    )
-                }
-            }
-        } else {
-            LazyRow(state = monthListState) {
-                items(months) { month ->
-                    Text(
-                        text = month,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clickable { selectedMonth = month },
-                        color = if (selectedMonth == month) Color.Black else Color.Gray
-                    )
-                }
-            }
-        }
-
-}
 
 
 @Composable
@@ -538,13 +470,6 @@ fun CustomLineChart(
     val maxY = dataPoints.maxOrNull() ?: 0f
     val minY = 0f
 
-    // 使用 OutlinedCard 包裹整个折线图
-    /*OutlinedCard(
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color.Black),
-        modifier = Modifier.fillMaxWidth()
-    ) {*/
         Box(
             modifier = Modifier
                 .padding(4.dp) // 内边距，给折线图留出绘制空间
@@ -588,7 +513,7 @@ fun CustomLineChart(
                     start = Offset(0f, averageY),
                     end = Offset(size.width, averageY),
                     strokeWidth = 1.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)
                 )
 
                 // 绘制折线图
@@ -661,7 +586,6 @@ fun CustomLineChart(
             }
         }
     }
-//}
 
 fun generateXAxisLabels(dataSize: Int): List<String> {
     // 指定要显示标签的索引

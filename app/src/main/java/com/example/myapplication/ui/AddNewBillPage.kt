@@ -54,7 +54,7 @@ import com.google.firebase.database.FirebaseDatabase
 fun AddNewBillPage(
     navController: NavController
 ) {
-    var isIncome by remember { mutableStateOf(true) } // 控制是收入还是支出页面
+    var isIncome by remember { mutableStateOf(false) } // 控制是收入还是支出页面
     var remark by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     val appViewModel: AppViewModel = viewModel()
@@ -103,10 +103,29 @@ fun AddNewBillPage(
             ) {
                 OutlinedButton(
                     onClick = {
+                        isIncome = false
+                        selectedCategory = expenditureCategories[0]
+                    },
+                    shape = RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp),
+                    border = BorderStroke(1.dp, Color.Black),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isIncome) Color.White else Color.Black, // 选中按钮为黑色
+                        contentColor = Color.Black
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Expenditure",
+                        color = if (isIncome) Color.Black else Color.White
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
                         isIncome = true
                         selectedCategory = incomeCategories[0]
                     },
-                    shape = RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp),
+                    shape = RoundedCornerShape(topEnd = 50.dp, bottomEnd = 50.dp),
                     border = BorderStroke(1.dp, Color.Black),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = if (isIncome) Color.Black else Color.White, // 选中按钮为黑色
@@ -120,24 +139,7 @@ fun AddNewBillPage(
                     )
                 }
 
-                OutlinedButton(
-                    onClick = {
-                        isIncome = false
-                        selectedCategory = expenditureCategories[0]
-                    },
-                    shape = RoundedCornerShape(topEnd = 50.dp, bottomEnd = 50.dp),
-                    border = BorderStroke(1.dp, Color.Black),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isIncome) Color.White else Color.Black, // 选中按钮为黑色
-                        contentColor = Color.Black
-                    ),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = "Expenditure",
-                        color = if (isIncome) Color.Black else Color.White
-                    )
-                }
+
             }
 
             // 类别选择框
