@@ -57,7 +57,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import com.example.myapplication.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -108,12 +114,10 @@ fun LoginPage(navController: NavController, modifier: Modifier = Modifier, conte
             // 邮箱登录部分
             EmailLoginSection(navController, context)
 
-            //Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // 灰线分隔
-            DividerWithText("其他登录方式")
-
-            Spacer(modifier = Modifier.height(4.dp))
+            DividerWithText("간편하게 로그인하기")
 
             // Google 登录部分
             GoogleLoginSection(googleSignInClient, launcher)
@@ -130,6 +134,7 @@ fun EmailLoginSection(navController: NavController, context: Context) {
     var isDialogVisible by rememberSaveable { mutableStateOf(false) }
     var dialogMessage by rememberSaveable { mutableStateOf("") }
     var autoLogin by rememberSaveable { mutableStateOf(false) }
+    val passwordVisible = remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     val sharedPreferences = context.getSharedPreferences("autoLoginPrefs", Context.MODE_PRIVATE)
@@ -162,15 +167,54 @@ fun EmailLoginSection(navController: NavController, context: Context) {
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done
             ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (email.isBlank() || password.isBlank()) {
+                        dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
+                        isDialogVisible = true
+                    } else {
+                        loginUser(email, password) { success, message ->
+                            if (success) {
+                                if (autoLogin) {
+                                    coroutineScope.launch {
+                                        sharedPreferences.edit()
+                                            .putBoolean("autoLoginEnabled", true)
+                                            .putString("savedEmail", email)
+                                            .apply()
+                                    }
+                                } else {
+                                    coroutineScope.launch {
+                                        sharedPreferences.edit()
+                                            .putBoolean("autoLoginEnabled", false)
+                                            .remove("savedEmail")
+                                            .apply()
+                                    }
+                                }
+                                navController.navigate("main")
+                            } else {
+                                dialogMessage = message
+                                isDialogVisible = true
+                            }
+                        }
+                    }
+                }
+            ),
+            visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
+                    Icon(
+                        painter = painterResource(id = if (passwordVisible.value) R.drawable.visibility else R.drawable.visibility_off),
+                        contentDescription = "Toggle password visibility"
+                    )
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
                 if (email.isBlank() || password.isBlank()) {
-                    dialogMessage = "邮箱和密码不能为空。"
+                    dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
                     isDialogVisible = true
                 } else {
                     loginUser(email, password) { success, message ->
@@ -200,7 +244,7 @@ fun EmailLoginSection(navController: NavController, context: Context) {
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Login", style = typography.titleMedium)
+            Text(text = "로그인", style = typography.titleMedium)
         }
 
         Row(
@@ -213,14 +257,22 @@ fun EmailLoginSection(navController: NavController, context: Context) {
                     checked = autoLogin,
                     onCheckedChange = { autoLogin = it }
                 )
-                Text("Auto-Login")
+                Text("자동 로그인")
             }
 
             TextButton(
                 onClick = { navController.navigate("register") }
             ) {
-                Text(text = "Register", style = typography.titleMedium)
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(textDecoration = TextDecoration.Underline)) {
+                            append("회원가입")
+                        }
+                    },
+                    style = typography.titleMedium
+                )
             }
+
         }
     }
 
@@ -263,10 +315,10 @@ fun GoogleLoginSection(
                 launcher.launch(signInIntent)
             }
         },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
+        modifier = Modifier.fillMaxWidth(),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
     ) {
-        Text(text = "Login with Google", style = typography.titleMedium)
+        Text(text = "Google", style = typography.titleMedium)
     }
 }
 
@@ -276,10 +328,10 @@ fun AnonymousLoginSection(navController: NavController) {
         onClick = {
             performAnonymousLogin(navController)
         },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
+        modifier = Modifier.fillMaxWidth(),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
     ) {
-        Text(text = "Login Anonymously", style = typography.titleMedium)
+        Text(text = "익명", style = typography.titleMedium)
     }
 }
 
@@ -304,9 +356,9 @@ fun loginUser(email: String, password: String, onResult: (Boolean, String) -> Un
             onResult(true, "")
         } else {
             val errorMessage = when (val exception = task.exception) {
-                is FirebaseAuthInvalidUserException -> "该账号未注册，请先注册。"
-                is FirebaseAuthInvalidCredentialsException -> "邮箱或密码错误，请重试。"
-                else -> "登录失败，请稍后重试。原因：${exception?.localizedMessage ?: "未知错误"}"
+                is FirebaseAuthInvalidUserException -> "이 계정은 등록되지 않았습니다. 먼저 회원가입을 해주세요."
+                is FirebaseAuthInvalidCredentialsException -> "이메일 또는 비밀번호가 잘못되었습니다. 다시 시도해주세요."
+                else -> "로그인에 실패했습니다. 잠시 후 다시 시도해주세요. 원인: ${exception?.localizedMessage ?: "알 수 없는 오류"}"
             }
             onResult(false, errorMessage)
         }
@@ -322,11 +374,11 @@ fun LoginDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "登录失败") },
+        title = { Text(text = "로그인 실패") },
         text = { Text(text = message) },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("确定")
+                Text("확인")
             }
         },
         modifier = modifier
@@ -352,16 +404,16 @@ fun handleGoogleSignInResult(
                 } else {
                     Toast.makeText(
                         context,
-                        "Firebase 登录失败: ${authTask.exception?.localizedMessage}",
+                        "Firebase 로그인 실패: ${authTask.exception?.localizedMessage}",
                         Toast.LENGTH_LONG
                     ).show()
                 }
             }
         } else {
-            Toast.makeText(context, "未能获取 Google ID Token", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Google ID Token 얻을 수 없습니다", Toast.LENGTH_LONG).show()
         }
     } catch (e: ApiException) {
-        Toast.makeText(context, "Google 登录失败: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "Google 로그인 실패: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
     }
 }
 

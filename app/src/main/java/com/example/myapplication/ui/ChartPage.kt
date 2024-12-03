@@ -110,18 +110,19 @@ class ChartViewModel : ViewModel() {
         }
     }
    fun updateData() {
-        monthData["January"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
-        monthData["February"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
-        monthData["March"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
-        monthData["April"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
-        monthData["May"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
-        monthData["June"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
-        monthData["July"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
-        monthData["August"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
-        monthData["September"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
-        monthData["October"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
-        monthData["November"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
-        monthData["December"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
+       monthData["1월"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
+       monthData["2월"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
+       monthData["3월"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
+       monthData["4월"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
+       monthData["5월"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
+       monthData["6월"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
+       monthData["7월"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
+       monthData["8월"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
+       monthData["9월"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
+       monthData["10월"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
+       monthData["11월"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
+       monthData["12월"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
+
 
         // 更新年数据
         yearData[2020] = getMonthlyIncomeExpenditure(2020, isIncomeSelected)
@@ -217,12 +218,13 @@ fun ChartPage(
     var selectedMonth by remember { mutableStateOf<String?>(null) } // 默认没有选择月份
 
     val months = listOf(
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
+        "1월", "2월", "3월", "4월", "5월", "6월",
+        "7월", "8월", "9월", "10월", "11월", "12월"
     )
+
     val years = (2020..2024).toList()
 
-    var selectedOption by remember { mutableStateOf("Expenditure Chart") } // 动态标题内容
+    var selectedOption by remember { mutableStateOf("지출 차트") } // 动态标题内容
     var isDropdownExpanded by remember { mutableStateOf(false) } // 控制下拉框显示
 
     // 初始化默认值
@@ -293,23 +295,23 @@ fun ChartPage(
                         onDismissRequest = { isDropdownExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Income Chart") },
+                            text = { Text("지출 차트") },
                             onClick = {
-                                // 更新逻辑为收入图表
-                                selectedOption = "Income Chart" // 更新标题
-                                viewModel.isIncomeSelected = true
+                                // 更新逻辑为支出图表
+                                selectedOption = "지출 차트" // 更新标题
+                                viewModel.isIncomeSelected = false
                                 viewModel.updateData()  // 更新数据
-
                                 isDropdownExpanded = false
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Expenditure Chart") },
+                            text = { Text("수입 차트") },
                             onClick = {
-                                // 更新逻辑为支出图表
-                                selectedOption = "Expenditure Chart" // 更新标题
-                                viewModel.isIncomeSelected = false
+                                // 更新逻辑为收入图表
+                                selectedOption = "수입 차트" // 更新标题
+                                viewModel.isIncomeSelected = true
                                 viewModel.updateData()  // 更新数据
+
                                 isDropdownExpanded = false
                             }
                         )
@@ -323,7 +325,7 @@ fun ChartPage(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            //verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 时间选择器
@@ -348,7 +350,7 @@ fun ChartPage(
                     if (isYearSelected) {
                         yearListState.scrollToItem(years.indexOf(selectedYear))
                     } else {
-                        monthListState.scrollToItem(months.indexOf("December"))
+                        monthListState.scrollToItem(months.indexOf("12월"))
                     }
 
             }
@@ -376,7 +378,7 @@ fun ChartPage(
                     border = BorderStroke(1.dp, Color.Black)
                 ) {
                     Text(
-                        text = "Month",
+                        text = "당년   월별",
                         color = if (isYearSelected) Color.Black else Color.White
                     )
                 }
@@ -397,7 +399,7 @@ fun ChartPage(
                     border = BorderStroke(1.dp, Color.Black)
                 ) {
                     Text(
-                        text = "Year",
+                        text = "각년   년별",
                         color = if (isYearSelected) Color.White else Color.Black
                     )
                 }
@@ -431,7 +433,7 @@ fun ChartPage(
             }
 
             // Line Chart分隔线
-            DividerWithText("Chart Table")
+            //DividerWithText("Chart Table")
 
             // 折线图
             CustomLineChart(
@@ -440,7 +442,8 @@ fun ChartPage(
                 selectedIndex = selectedIndex,
                 onSelectedIndexChanged = { newIndex ->
                     selectedIndex = newIndex
-                }
+                },
+                isYearSelected = isYearSelected
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -464,7 +467,8 @@ fun CustomLineChart(
     dataPoints: List<Float>,
     xAxisLabels: List<String>,
     selectedIndex: Int,
-    onSelectedIndexChanged: (Int) -> Unit
+    onSelectedIndexChanged: (Int) -> Unit,
+    isYearSelected: Boolean
 ) {
     val maxX = if (dataPoints.isNotEmpty()) dataPoints.size - 1 else 1
     val maxY = dataPoints.maxOrNull() ?: 0f
@@ -572,16 +576,30 @@ fun CustomLineChart(
                     // 画选择的点
                     drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
                     // 显示选择的数据
-                    drawContext.canvas.nativeCanvas.drawText(
-                        "${selectedIndex + 1} : ${dataPoints[selectedIndex].toInt()}",
-                        x,
-                        y - 16.dp.toPx(),
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.BLACK
-                            textSize = 40f
-                            textAlign = android.graphics.Paint.Align.CENTER
-                        }
-                    )
+                    if (isYearSelected){
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "${selectedIndex + 1}월 : ${dataPoints[selectedIndex].toInt()}원",
+                            x,
+                            y - 16.dp.toPx(),
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 40f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    }else{
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "${selectedIndex + 1}일 : ${dataPoints[selectedIndex].toInt()}원",
+                            x,
+                            y - 16.dp.toPx(),
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 40f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    }
+
                 }
             }
         }
