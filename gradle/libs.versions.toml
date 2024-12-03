@@ -5,6 +5,8 @@ agp = "8.6.0"
 firebaseBom = "33.5.1"
 firebaseBomVersion = "32.3.1"
 googleAccompanistSwiperefresh = "0.30.0"
+hiltAndroid = "2.51.1"
+hiltCompiler = "2.51.1"
 kotlin = "1.9.0"
 coreKtx = "1.10.1"
 junit = "4.13.2"
@@ -38,6 +40,8 @@ firebase-bom-v3231 = { module = "com.google.firebase:firebase-bom", version.ref 
 firebase-database-ktx = { module = "com.google.firebase:firebase-database-ktx" }
 google-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 google-firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }
+hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hiltCompiler" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
