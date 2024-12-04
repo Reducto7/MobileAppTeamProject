@@ -4,10 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.ChartPage
+import com.example.myapplication.ui.ChartViewModel
 import com.example.myapplication.ui.DetailsPage
 import com.example.myapplication.ui.EditBillPage
 import com.example.myapplication.ui.LoginPage
@@ -27,6 +29,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 val navController = rememberNavController()
+                val viewModel: ChartViewModel = viewModel()
+
                 NavHost(
                     navController = navController,
                     startDestination = "login"
@@ -49,12 +53,12 @@ class MainActivity : ComponentActivity() {
                     composable("mypage"){
                         MyPage(navController)
                     }
-                    composable("chart"){
-                        ChartPage(navController)
+                    composable("chart") {
+                        ChartPage(navController = navController, viewModel = viewModel)
                     }
                     composable("details/{category}") { backStackEntry ->
                         val category = backStackEntry.arguments?.getString("category") ?: "Unknown"
-                        DetailsPage(navController, category) // 详情页面
+                        DetailsPage(navController = navController, category = category, viewModel = viewModel)
                     }
                     composable("editBill/{billId}") { backStackEntry ->
                         val billId = backStackEntry.arguments?.getString("billId")?.toIntOrNull()
