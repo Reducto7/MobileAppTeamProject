@@ -1,6 +1,7 @@
 package com.example.myapplication.ui
 
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,12 +39,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -54,49 +60,42 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailsPage(
     navController: NavController,
-    category: String
+    category: String,
+    viewModel: ChartViewModel
 ) {
-    // 当前选中的维度（周、月、年）
-    var selectedTab by remember { mutableStateOf("monthlyData") }
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val currentMonth = Calendar.getInstance().get(Calendar.MONTH) + 1
 
-    // 样本数据
-    //val weeklyData = listOf(100f, 150f, 120f, 180f, 200f, 130f, 160f) // 周折线图数据
-    val monthlyData = listOf(4000f, 4500f, 3000f, 3500f, 3800f)       // 月折线图数据
-    val yearlyData = listOf(48000f, 52000f, 60000f, 55000f, 58000f)  // 年折线图数据
+    var selectedYear by remember { mutableStateOf(currentYear) }
+    var selectedMonth by remember { mutableStateOf(currentMonth) }
+    var isMonthlyView by remember { mutableStateOf(true) } // 默认为月视图
+    var sortByAmount by remember { mutableStateOf(true) } // 默认按金额排序
 
-    //val weeklyBarData = listOf("食品" to 150f, "购物" to 200f, "交通" to 100f)
-    val monthlyBarData = listOf("食品" to 800f, "购物" to 1200f, "交通" to 600f)
-    val yearlyBarData = listOf("食品" to 9600f, "购物" to 12000f, "交通" to 7800f)
+    var lineChartData by remember { mutableStateOf(emptyList<Float>()) }
+    var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
+    var pieChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
 
-    //val weeklyPieData = listOf("食品" to 40f, "购物" to 30f, "交通" to 30f)
-    val monthlyPieData = listOf("食品" to 35f, "购物" to 40f, "交通" to 25f)
-    val yearlyPieData = listOf("食品" to 50f, "购物" to 30f, "交通" to 20f)
+    // 更新数据
+    LaunchedEffect(selectedYear, selectedMonth, sortByAmount) {
+        val bills = viewModel.getBillsForCategory(category, selectedYear, selectedMonth)
 
-    // 当前显示的数据
-    val lineChartData = when (selectedTab) {
-       // "Week" -> weeklyData
-        "Month" -> monthlyData
-        "Year" -> yearlyData
-        else -> monthlyData
+        lineChartData = viewModel.getMonthlyTotalsForCategory(category, selectedYear, viewModel.isIncomeSelected)
+
+        barChartData = if (sortByAmount) {
+            bills.sortedByDescending { it.amount }
+        } else {
+            bills.sortedBy { it.date }
+        }.map { it.remarks to it.amount.toFloat() }
+
+        pieChartData = viewModel.getPieChartDataForCategory(category, selectedYear, selectedMonth, viewModel.isIncomeSelected)
     }
-    val barChartData = when (selectedTab) {
-        //"Week" -> weeklyBarData
-        "Month" -> monthlyBarData
-        "Year" -> yearlyBarData
-        else -> monthlyPieData
-    }
-    val pieChartData = when (selectedTab) {
-        //"Week" -> weeklyPieData
-        "Month" -> monthlyPieData
-        "Year" -> yearlyPieData
-        else -> monthlyPieData
-    }
+
 
     Scaffold(
         topBar = {
@@ -120,21 +119,44 @@ fun DetailsPage(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 周/月/年 切换
+            // 年月选择
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                listOf("Month", "Year").forEach { tab ->
-                    Button(
-                        onClick = { selectedTab = tab },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedTab == tab) Color.Black else Color.Gray,
-                            contentColor = if (selectedTab == tab) Color.White else Color.Black
+                Button(
+                    onClick = { isMonthlyView = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isMonthlyView) Color.Black else Color.White,
+                        contentColor = if (isMonthlyView) Color.White else Color.Black
+                    ),
+                    shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .border(
+                            BorderStroke(1.dp, Color.Black),
+                            shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                         )
-                    ) {
-                        Text(tab)
-                    }
+                ) {
+                    Text("Month")
+                }
+                Button(
+                    onClick = { isMonthlyView = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!isMonthlyView) Color.Black else Color.White,
+                        contentColor = if (!isMonthlyView) Color.White else Color.Black
+                    ),
+                    shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .border(
+                            BorderStroke(1.dp, Color.Black),
+                            shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
+                        )
+                ) {
+                    Text("Year")
                 }
             }
 
@@ -142,22 +164,74 @@ fun DetailsPage(
             DividerWithText("Trend")
             CustomLineChartWithAxis(dataPoints = lineChartData)
 
-            // 横向柱状图
+            // 排序切换按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(onClick = { sortByAmount = true }) {
+                    Text("Sort by Amount", color = if (sortByAmount) Color.Black else Color.Gray)
+                }
+                TextButton(onClick = { sortByAmount = false }) {
+                    Text("Sort by Date", color = if (!sortByAmount) Color.Black else Color.Gray)
+                }
+            }
+
+            // 柱状图
             DividerWithText("Breakdown")
             HorizontalBarChart(
                 data = barChartData,
                 maxValue = barChartData.maxOfOrNull { it.second } ?: 1f
             )
 
-            // 饼状图
+            // 饼图
             DividerWithText("Distribution")
-            PieChart(data = pieChartData)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                PieChart(data = pieChartData)
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(pieChartData.sortedByDescending { it.second }) { (label, value) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(label, modifier = Modifier.weight(1f))
+                            Text("${value.toInt()}%")
+                        }
+                    }
+                }
+            }
         }
     }
 }
-
-
-
+/*
+@Composable
+fun <T> DropdownMenuBox(label: String, items: List<T>, selectedItem: T, onItemSelected: (T) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, Color.Black)
+        ) {
+            Text("$label: $selectedItem")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            items.forEach {
+                DropdownMenuItem(onClick = {
+                    onItemSelected(it)
+                    expanded = false
+                }, text = { Text(it.toString()) })
+            }
+        }
+    }
+}
+ */
 
 //折线图组件
 @Composable
@@ -308,3 +382,5 @@ fun PieChart(data: List<Pair<String, Float>>) {
         }
     }
 }
+
+

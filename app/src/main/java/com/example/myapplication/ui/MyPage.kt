@@ -133,42 +133,6 @@ fun FunctionButtonsSection(navController: NavController) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        /*
-        Button(
-            onClick = { /* 暂时不做跳转 */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White, // 填充颜色为白色
-                contentColor = Color.Black // 字体颜色为黑色
-            ),
-            border = BorderStroke(1.dp, Color.Black) // 边框为黑色
-        ) {
-            Text(text = "My bill")
-        }
-        Button(
-            onClick = { /* 暂时不做跳转 */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White, // 填充颜色为白色
-                contentColor = Color.Black // 字体颜色为黑色
-            ),
-            border = BorderStroke(1.dp, Color.Black) // 边框为黑色
-        ) {
-            Text(text = "Household bill")
-        }
-
-         */
-        OutlinedButton(
-            onClick = { navController.navigate("settings") },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
-        ) {
-            Text(text = "settings")
-        }
         OutlinedButton(
             onClick = {
                 // 退出账号并跳转到登录页面

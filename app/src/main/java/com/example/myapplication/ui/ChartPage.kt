@@ -76,7 +76,9 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.net.URLEncoder
 import java.util.Calendar
+
 
 class ChartViewModel : ViewModel() {
     private val database: DatabaseReference = FirebaseDatabase.getInstance().getReference("bills")
@@ -109,20 +111,19 @@ class ChartViewModel : ViewModel() {
             })
         }
     }
-   fun updateData() {
-       monthData["1월"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
-       monthData["2월"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
-       monthData["3월"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
-       monthData["4월"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
-       monthData["5월"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
-       monthData["6월"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
-       monthData["7월"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
-       monthData["8월"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
-       monthData["9월"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
-       monthData["10월"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
-       monthData["11월"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
-       monthData["12월"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
-
+    fun updateData() {
+        monthData["1월"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
+        monthData["2월"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
+        monthData["3월"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
+        monthData["4월"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
+        monthData["5월"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
+        monthData["6월"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
+        monthData["7월"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
+        monthData["8월"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
+        monthData["9월"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
+        monthData["10월"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
+        monthData["11월"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
+        monthData["12월"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
 
         // 更新年数据
         yearData[2020] = getMonthlyIncomeExpenditure(2020, isIncomeSelected)
@@ -194,9 +195,99 @@ class ChartViewModel : ViewModel() {
         return monthlyTotals
     }
 
+    //计算某年的各类别收入和支出year: Int, month: Int, isIncome: Boolean
+    fun getYearlyCategoryIncomeExpenditure(year: Int, isIncome: Boolean): Map<String, Double> {
+        return _bills
+            .filter {
+                val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+                billDate.size == 3 && billDate[0] == year && it.isIncome == isIncome
+            }
+            .groupBy { it.category }
+            .mapValues { (_, bills) -> bills.sumOf { it.amount } }
+    }
+
+    //计算某年某月的各类别收入和支出
+    fun getMonthlyCategoryIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): Map<String, Double> {
+        return _bills
+            .filter {
+                val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+                billDate.size == 3 && billDate[0] == year && billDate[1] == month && it.isIncome == isIncome
+
+            }
+
+            .groupBy { it.category }
+            .mapValues { (_, bills) -> bills.sumOf { it.amount } }
+    }
+
     // 判断是否为闰年
     private fun isLeapYear(year: Int): Boolean {
         return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    }
+
+    //详情分析页面
+    fun getBillsForCategory(category: String, year: Int, month: Int?): List<Bill> {
+        return _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    billDate[1] == month &&
+                    it.category == category
+        }
+    }
+
+    fun getMonthlyTotalsForCategory(category: String, year: Int, isIncome: Boolean): List<Float> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    it.category == category &&
+                    it.isIncome == isIncome
+        }
+        val monthlyTotals = MutableList(12) { 0f }
+        filteredBills.forEach {
+            val month = it.date.split("-")[1].toIntOrNull() ?: 1
+            if (month in 1..12) monthlyTotals[month - 1] += it.amount.toFloat()
+        }
+        return monthlyTotals
+    }
+
+    fun getPieChartDataForCategory(category: String, year: Int, month: Int, isIncome: Boolean): List<Pair<String, Float>> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    billDate[1] == month &&
+                    it.category == category &&
+                    it.isIncome == isIncome
+        }
+        val totalAmount = filteredBills.sumOf { it.amount }
+        return filteredBills.map {
+            it.remarks to (it.amount / totalAmount * 100).toFloat()
+        }.sortedByDescending { it.second }
+    }
+
+    fun getYearlyTotalsForCategory(
+        category: String,
+        year: Int,
+        isIncome: Boolean
+    ): List<Float> {
+        // 按月份汇总指定类别的收入或支出
+        val monthlyTotals = MutableList(12) { 0f }
+
+        bills.filter { bill ->
+            val billDate = bill.date.split("-").mapNotNull { it.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    bill.category == category &&
+                    bill.isIncome == isIncome
+        }.forEach { bill ->
+            val month = bill.date.split("-")[1].toIntOrNull() ?: 1
+            if (month in 1..12) {
+                monthlyTotals[month - 1] += bill.amount.toFloat()
+            }
+        }
+
+        return monthlyTotals
     }
 }
 
@@ -206,6 +297,16 @@ fun ChartPage(
     navController: NavController,
     viewModel: ChartViewModel = viewModel()
 ) {
+    val months = listOf(
+        "1월", "2월", "3월", "4월", "5월", "6월",
+        "7월", "8월", "9월", "10월", "11월", "12월"
+    )
+    val years = (2020..2024).toList()
+
+    // 当前年份和月份
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val currentMonth = Calendar.getInstance().get(Calendar.MONTH) + 1
+
     // 选中点的索引
     var selectedIndex by remember { mutableStateOf(-1) }
 
@@ -214,42 +315,73 @@ fun ChartPage(
     var isYearSelected by remember { mutableStateOf(false) } // 外部管理的状态
     var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
 
-    var selectedYear by remember { mutableStateOf<Int?>(null) }
-    var selectedMonth by remember { mutableStateOf<String?>(null) } // 默认没有选择月份
+    var selectedYear by remember { mutableStateOf(currentYear) } // 默认选中当前年份
+    var selectedMonth by remember { mutableStateOf(months[currentMonth - 1]) } // 默认选中当前月份
 
-    val months = listOf(
-        "1월", "2월", "3월", "4월", "5월", "6월",
-        "7월", "8월", "9월", "10월", "11월", "12월"
-    )
-
-    val years = (2020..2024).toList()
+    //var selectedYear by remember { mutableStateOf<Int?>(null) }
+    //var selectedMonth by remember { mutableStateOf<String?>(null) } // 默认没有选择月份
 
     var selectedOption by remember { mutableStateOf("지출 차트") } // 动态标题内容
     var isDropdownExpanded by remember { mutableStateOf(false) } // 控制下拉框显示
+    /*
+        // 初始化默认值
+        LaunchedEffect(viewModel.isIncomeSelected) {
+            // 当收入/支出选项变化时，更新数据
+            if (isYearSelected) {
+                val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
+                dataPoints = yearData
+                xAxisLabels = generateXAxisLabelsForYear()
+            } else {
+                val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
+                dataPoints = monthData
+                xAxisLabels = generateXAxisLabels(monthData.size)
+            }
+        }
 
-    // 初始化默认值
-    LaunchedEffect(viewModel.isIncomeSelected) {
-        // 当收入/支出选项变化时，更新数据
+     */
+
+    LaunchedEffect(isYearSelected, selectedYear, selectedMonth) {
         if (isYearSelected) {
-            val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
-            dataPoints = yearData
+            // 按年份模式加载数据
+            val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
+                selectedYear,
+                viewModel.isIncomeSelected
+            )
+            barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
+            dataPoints = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
             xAxisLabels = generateXAxisLabelsForYear()
         } else {
-            val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
-            dataPoints = monthData
-            xAxisLabels = generateXAxisLabels(monthData.size)
+            // 按月份模式加载数据
+            val monthlyIndex = months.indexOf(selectedMonth) + 1 // 将月份转换为数字
+            val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
+                selectedYear,
+                monthlyIndex,
+                viewModel.isIncomeSelected
+            )
+            barChartData = monthlyData.map { (category, total) -> category to total.toFloat() }
+            dataPoints = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
+            xAxisLabels = generateXAxisLabels(dataPoints.size)
         }
     }
-
-    // 模拟数据（柱状图）
-    val simulatedMonthBarData = mapOf(
-        "October" to listOf("Food" to 300f, "Shopping" to 301f, "Rent" to 230f, "Daily" to 200f, "Transport" to 100f, "Stocks" to 150f, "Utilities" to 180f, "Healthcare" to 210f, "Education" to 120f, "Entertainment" to 250f, "Others" to 90f),
-        "November" to listOf("Food" to 250f, "Shopping" to 220f, "Rent" to 100f, "Daily" to 150f, "Transport" to 200f, "Stocks" to 150f, "Utilities" to 170f, "Healthcare" to 190f, "Education" to 140f, "Entertainment" to 230f, "Others" to 80f)
-    )
-    val simulatedYearBarData = mapOf(
-        2023 to listOf("Food" to 3600f, "Shopping" to 4200f, "Rent" to 4600f, "Daily" to 2400f, "Transport" to 3600f, "Stocks" to 1500f, "Utilities" to 2000f, "Healthcare" to 2200f, "Education" to 1800f, "Entertainment" to 2700f, "Others" to 1300f),
-        2024 to listOf("Food" to 3200f, "Shopping" to 4800f, "Rent" to 4200f, "Daily" to 2200f, "Transport" to 3800f, "Stocks" to 1500f, "Utilities" to 2100f, "Healthcare" to 2300f, "Education" to 1900f, "Entertainment" to 2600f, "Others" to 1400f)
-    )
+    // 柱状图数据更新逻辑
+    LaunchedEffect(selectedYear, selectedMonth, isYearSelected) {
+        if (isYearSelected) {
+            // 按年份计算各类别的收入/支出
+            val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
+                selectedYear ?: currentYear, // 默认年份为当前年份
+                viewModel.isIncomeSelected
+            )
+            barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
+        } else {
+            // 按月份计算各类别的收入/支出
+            val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
+                selectedYear ?: currentYear, // 默认年份为当前年份
+                (months.indexOf(selectedMonth) + 1).takeIf { it > 0 } ?: currentMonth, // 获取月份索引（1-12）
+                viewModel.isIncomeSelected
+            )
+            barChartData = monthlyData.map { (category, total) -> category to total.toFloat() }
+        }
+    }
 
     // 初始化默认值
     LaunchedEffect(Unit) {
@@ -297,21 +429,21 @@ fun ChartPage(
                         DropdownMenuItem(
                             text = { Text("지출 차트") },
                             onClick = {
-                                // 更新逻辑为支出图表
+                                // 更新逻辑为收入图表
                                 selectedOption = "지출 차트" // 更新标题
-                                viewModel.isIncomeSelected = false
+                                viewModel.isIncomeSelected = true
                                 viewModel.updateData()  // 更新数据
+
                                 isDropdownExpanded = false
                             }
                         )
                         DropdownMenuItem(
                             text = { Text("수입 차트") },
                             onClick = {
-                                // 更新逻辑为收入图表
+                                // 更新逻辑为支出图表
                                 selectedOption = "수입 차트" // 更新标题
-                                viewModel.isIncomeSelected = true
+                                viewModel.isIncomeSelected = false
                                 viewModel.updateData()  // 更新数据
-
                                 isDropdownExpanded = false
                             }
                         )
@@ -325,7 +457,7 @@ fun ChartPage(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize(),
-            //verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 时间选择器
@@ -347,11 +479,11 @@ fun ChartPage(
             }
 
             LaunchedEffect(Unit) {
-                    if (isYearSelected) {
-                        yearListState.scrollToItem(years.indexOf(selectedYear))
-                    } else {
-                        monthListState.scrollToItem(months.indexOf("12월"))
-                    }
+                if (isYearSelected) {
+                    yearListState.scrollToItem(years.indexOf(selectedYear))
+                } else {
+                    monthListState.scrollToItem(months.indexOf("12월"))
+                }
 
             }
 
@@ -365,9 +497,9 @@ fun ChartPage(
                 Button(
                     onClick = {
                         isYearSelected = false // 切换到月份模式
-                        val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
-                        dataPoints = monthData
-                        xAxisLabels = generateXAxisLabels(monthData.size)
+                        //val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
+                        //dataPoints = monthData
+                        //xAxisLabels = generateXAxisLabels(monthData.size)
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = if (isYearSelected) Color.White else Color.Black,
@@ -386,9 +518,9 @@ fun ChartPage(
                 Button(
                     onClick = {
                         isYearSelected = true // 切换到年份模式
-                        val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
-                        dataPoints = yearData
-                        xAxisLabels = generateXAxisLabelsForYear()
+                        //val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
+                        //dataPoints = yearData
+                        //xAxisLabels = generateXAxisLabelsForYear()
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = if (isYearSelected) Color.Black else Color.White,
@@ -399,7 +531,7 @@ fun ChartPage(
                     border = BorderStroke(1.dp, Color.Black)
                 ) {
                     Text(
-                        text = "각년   년별",
+                        text = "각년   월별",
                         color = if (isYearSelected) Color.White else Color.Black
                     )
                 }
@@ -433,7 +565,7 @@ fun ChartPage(
             }
 
             // Line Chart分隔线
-            //DividerWithText("Chart Table")
+            DividerWithText("Chart Table")
 
             // 折线图
             CustomLineChart(
@@ -442,8 +574,7 @@ fun ChartPage(
                 selectedIndex = selectedIndex,
                 onSelectedIndexChanged = { newIndex ->
                     selectedIndex = newIndex
-                },
-                isYearSelected = isYearSelected
+                }
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -452,8 +583,8 @@ fun ChartPage(
             HorizontalBarChartWithClick(
                 data = barChartData,
                 maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
-                onCategoryClick = { category ->
-                    navController.navigate("details/$category")
+                onCategoryClick = {category ->
+                    navController.navigate("details/${URLEncoder.encode(category, "UTF-8")}")
                 }
             )
         }
@@ -461,149 +592,134 @@ fun ChartPage(
 }
 
 
-
+//折线图实现
 @Composable
 fun CustomLineChart(
     dataPoints: List<Float>,
     xAxisLabels: List<String>,
     selectedIndex: Int,
-    onSelectedIndexChanged: (Int) -> Unit,
-    isYearSelected: Boolean
+    onSelectedIndexChanged: (Int) -> Unit
 ) {
     val maxX = if (dataPoints.isNotEmpty()) dataPoints.size - 1 else 1
     val maxY = dataPoints.maxOrNull() ?: 0f
     val minY = 0f
 
-        Box(
+    Box(
+        modifier = Modifier
+            .padding(4.dp) // 内边距，给折线图留出绘制空间
+            .height(150.dp) // 设置卡片内容高度，确保横坐标有足够空间
+    ) {
+        Canvas(
             modifier = Modifier
-                .padding(4.dp) // 内边距，给折线图留出绘制空间
-                .height(150.dp) // 设置卡片内容高度，确保横坐标有足够空间
-        ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(dataPoints) { // 监听 dataPoints 的变化，重新计算点击逻辑
-                        detectTapGestures { offset ->
-                            val nearestIndex = dataPoints.indices.minByOrNull { index ->
-                                val x = (index / maxX.toFloat()) * size.width
-                                kotlin.math.abs(offset.x - x)
-                            } ?: -1
+                .fillMaxSize()
+                .pointerInput(dataPoints) { // 监听 dataPoints 的变化，重新计算点击逻辑
+                    detectTapGestures { offset ->
+                        val nearestIndex = dataPoints.indices.minByOrNull { index ->
+                            val x = (index / maxX.toFloat()) * size.width
+                            kotlin.math.abs(offset.x - x)
+                        } ?: -1
 
-                            if (nearestIndex in dataPoints.indices) {
-                                onSelectedIndexChanged(nearestIndex)
-                            }
+                        if (nearestIndex in dataPoints.indices) {
+                            onSelectedIndexChanged(nearestIndex)
                         }
                     }
-            ) {
-                // 计算横坐标需要的额外高度
-                val xAxisPadding = 40.dp.toPx()
-
-                // 绘制网格线
-                val averageValue = if (dataPoints.isNotEmpty()) dataPoints.average().toFloat() else 0f
-                val averageY =
-                    size.height - xAxisPadding - ((averageValue - minY) / (maxY - minY)) * (size.height - xAxisPadding)
-
-                // 零刻度线
-                drawLine(
-                    color = Color.Gray,
-                    start = Offset(0f, size.height - xAxisPadding),
-                    end = Offset(size.width, size.height - xAxisPadding),
-                    strokeWidth = 1.dp.toPx()
-                )
-
-                // 平均值线（灰色虚线）
-                drawLine(
-                    color = Color.Gray,
-                    start = Offset(0f, averageY),
-                    end = Offset(size.width, averageY),
-                    strokeWidth = 1.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)
-                )
-
-                // 绘制折线图
-                val path = Path().apply {
-                    dataPoints.forEachIndexed { index, value ->
-                        val x = (index / maxX.toFloat()) * size.width
-                        val y = size.height - xAxisPadding - ((value - minY) / (maxY - minY)) * (size.height - xAxisPadding)
-                        if (index == 0) moveTo(x, y) else lineTo(x, y)
-                    }
                 }
-                drawPath(
-                    path = path,
-                    color = Color.Black,
-                    style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-                )
+        ) {
+            // 计算横坐标需要的额外高度
+            val xAxisPadding = 40.dp.toPx()
 
-                // 绘制横坐标
-                xAxisLabels.forEachIndexed { index, label ->
-                    if (label.isNotEmpty()) { // 仅绘制非空标签
-                        val x = (index.toFloat() / maxX) * size.width
-                        drawContext.canvas.nativeCanvas.drawText(
-                            label,
-                            x,
-                            size.height - 10.dp.toPx(), // 确保标签位于 Canvas 的底部
-                            android.graphics.Paint().apply {
-                                color = android.graphics.Color.BLACK
-                                textSize = 40f
-                                textAlign = android.graphics.Paint.Align.CENTER
-                            }
-                        )
-                    }
-                }
+            // 绘制网格线
+            val averageValue = if (dataPoints.isNotEmpty()) dataPoints.average().toFloat() else 0f
+            val averageY =
+                size.height - xAxisPadding - ((averageValue - minY) / (maxY - minY)) * (size.height - xAxisPadding)
 
-                // 绘制所有点
+            // 零刻度线
+            drawLine(
+                color = Color.Gray,
+                start = Offset(0f, size.height - xAxisPadding),
+                end = Offset(size.width, size.height - xAxisPadding),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            // 平均值线（灰色虚线）
+            drawLine(
+                color = Color.Gray,
+                start = Offset(0f, averageY),
+                end = Offset(size.width, averageY),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)
+            )
+
+            // 绘制折线图
+            val path = Path().apply {
                 dataPoints.forEachIndexed { index, value ->
                     val x = (index / maxX.toFloat()) * size.width
                     val y = size.height - xAxisPadding - ((value - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+                    if (index == 0) moveTo(x, y) else lineTo(x, y)
+                }
+            }
+            drawPath(
+                path = path,
+                color = Color.Black,
+                style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
 
-                    drawCircle(
-                        color = Color.Black,
-                        radius = 2.dp.toPx(),
-                        center = Offset(x, y)
-                    )
-                    drawCircle(
-                        color = Color.White,
-                        radius = 1.dp.toPx(),
-                        center = Offset(x, y)
+            // 绘制横坐标
+            xAxisLabels.forEachIndexed { index, label ->
+                if (label.isNotEmpty()) { // 仅绘制非空标签
+                    val x = (index.toFloat() / maxX) * size.width
+                    drawContext.canvas.nativeCanvas.drawText(
+                        label,
+                        x,
+                        size.height - 10.dp.toPx(), // 确保标签位于 Canvas 的底部
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 40f
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
                     )
                 }
+            }
 
-                // 绘制选中点
-                if (selectedIndex >= 0 && selectedIndex < dataPoints.size) {
-                    val x = (selectedIndex / maxX.toFloat()) * size.width
-                    val y =
-                        size.height - xAxisPadding - ((dataPoints[selectedIndex] - minY) / (maxY - minY)) * (size.height - xAxisPadding)
-                    // 画选择的点
-                    drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
-                    // 显示选择的数据
-                    if (isYearSelected){
-                        drawContext.canvas.nativeCanvas.drawText(
-                            "${selectedIndex + 1}월 : ${dataPoints[selectedIndex].toInt()}원",
-                            x,
-                            y - 16.dp.toPx(),
-                            android.graphics.Paint().apply {
-                                color = android.graphics.Color.BLACK
-                                textSize = 40f
-                                textAlign = android.graphics.Paint.Align.CENTER
-                            }
-                        )
-                    }else{
-                        drawContext.canvas.nativeCanvas.drawText(
-                            "${selectedIndex + 1}일 : ${dataPoints[selectedIndex].toInt()}원",
-                            x,
-                            y - 16.dp.toPx(),
-                            android.graphics.Paint().apply {
-                                color = android.graphics.Color.BLACK
-                                textSize = 40f
-                                textAlign = android.graphics.Paint.Align.CENTER
-                            }
-                        )
+            // 绘制所有点
+            dataPoints.forEachIndexed { index, value ->
+                val x = (index / maxX.toFloat()) * size.width
+                val y = size.height - xAxisPadding - ((value - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+
+                drawCircle(
+                    color = Color.Black,
+                    radius = 2.dp.toPx(),
+                    center = Offset(x, y)
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 1.dp.toPx(),
+                    center = Offset(x, y)
+                )
+            }
+
+            // 绘制选中点
+            if (selectedIndex >= 0 && selectedIndex < dataPoints.size) {
+                val x = (selectedIndex / maxX.toFloat()) * size.width
+                val y =
+                    size.height - xAxisPadding - ((dataPoints[selectedIndex] - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+                // 画选择的点
+                drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
+                // 显示选择的数据
+                drawContext.canvas.nativeCanvas.drawText(
+                    "${selectedIndex + 1} : ${dataPoints[selectedIndex].toInt()}",
+                    x,
+                    y - 16.dp.toPx(),
+                    android.graphics.Paint().apply {
+                        color = android.graphics.Color.BLACK
+                        textSize = 40f
+                        textAlign = android.graphics.Paint.Align.CENTER
                     }
-
-                }
+                )
             }
         }
     }
+}
 
 fun generateXAxisLabels(dataSize: Int): List<String> {
     // 指定要显示标签的索引
@@ -696,223 +812,4 @@ fun HorizontalBarChartWithClick(
         }
     }
 }
-    /*
-    val visibleItemCount = 4 // 默认显示 4 条数据
-    val itemHeight = 36.dp // 单条柱状图高度 + 间距
 
-    // 整体外框
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(itemHeight * visibleItemCount) // 限制 LazyColumn 高度
-            .background(Color.White)
-            .border(
-                width = 2.dp,
-                color = Color.Black,
-                shape = RoundedCornerShape(10.dp)
-            )
-            .padding(8.dp) // 黑色框内的内边距
-    ) {
-        // 使用 LazyColumn 实现滚动
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // 将数据按数值降序排列
-            val sortedData = data.sortedByDescending { it.second }
-
-            items(sortedData) { (label, value) ->
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onCategoryClick(label) }, // 点击事件
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 显示标签
-                        Text(
-                            text = label,
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-
-                        // 横向柱状条
-                        Box(
-                            modifier = Modifier
-                                .weight(4f)
-                                .height(20.dp)
-                                .background(Color.White) // 设置白色背景
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.Black,
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-                                .clip(RoundedCornerShape(10.dp)) // 保证圆角效果
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
-                                    .height(20.dp)
-                                    .background(Color.Black, RoundedCornerShape(10.dp))
-                            )
-                        }
-                    }
-                    // 数值显示在柱状图右上角
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Text(
-                            text = value.toInt().toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(end = 8.dp, top = 4.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-     */
-
-/*
-// 整体外框
-Box(
-    modifier = Modifier
-        .fillMaxWidth()
-        .height(300.dp) // 调整高度，根据需要更改
-        .background(Color.White)
-        .border(
-            width = 2.dp,
-            color = Color.Black,
-            shape = RoundedCornerShape(10.dp)
-        )
-        .padding(8.dp)
-){
-    // 使用 LazyColumn 实现滚动
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // 将数据按数值降序排列
-        val sortedData = data.sortedByDescending { it.second }
-
-        items(sortedData) { (label, value) ->
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCategoryClick(label) }, // 点击事件
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 显示标签
-                    Text(
-                        text = label,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-
-                    // 横向柱状条
-                    Box(
-                        modifier = Modifier
-                            .weight(4f)
-                            .height(20.dp)
-                            .background(Color.White) // 设置白色背景
-                            .border(
-                                width = 1.dp,
-                                color = Color.White,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clip(RoundedCornerShape(10.dp)) // 保证圆角效果
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
-                                .height(20.dp)
-                                .background(Color.Black, RoundedCornerShape(10.dp))
-                        )
-                    }
-                }
-                // 数值显示在柱状图右上角
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Text(
-                        text = value.toInt().toString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(end = 8.dp, top = 4.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-}
-
-        Column(
-            modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            data.forEach { (label, value) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCategoryClick(label) }, // 点击事件,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 显示标签
-                    Text(
-                        text = label,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-
-                    // 横向柱状条
-                    Box(
-                        modifier = Modifier
-                            .weight(4f)
-                            .height(20.dp)
-                            .background(Color.White) // 设置白色背景
-                            .border(
-                                width = 1.dp,
-                                color = Color.White,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clip(RoundedCornerShape(10.dp)) // 保证圆角效果
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
-                                .height(20.dp)
-                                .background(Color.Black, RoundedCornerShape(10.dp))
-                        )
-                    }
-                }
-                // 数值显示在柱状图右上角
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Text(
-                        text = value.toInt().toString(),
-                        //text = "${value.toInt()}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(end = 8.dp, top = 4.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-}
-
-
-*/

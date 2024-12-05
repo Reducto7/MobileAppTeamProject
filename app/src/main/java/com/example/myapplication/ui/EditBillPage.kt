@@ -29,7 +29,7 @@ import androidx.navigation.NavController
 @Composable
 fun EditBillPage(
     navController: NavController,
-    billId: Int?, // 接收 Int? 类型的 billId
+    id: Int?, // 接收 Int? 类型的 billId
     modifier: Modifier = Modifier,
     viewModel: BillViewModel = viewModel() // 获取 ViewModel 实例
 ) {
@@ -44,9 +44,9 @@ fun EditBillPage(
     val context = LocalContext.current
 
     // 页面加载时获取账单数据
-    LaunchedEffect(billId) {
-        if (billId != null) {
-            val bill = viewModel.getBillById(billId) // 从 ViewModel 获取账单数据
+    LaunchedEffect(id) {
+        if (id != null) {
+            val bill = viewModel.getBillById(id) // 从 ViewModel 获取账单数据
             if (bill != null) {
                 // 如果账单数据存在，加载上次编辑的数据
                 isIncome = bill.isIncome
@@ -201,9 +201,9 @@ fun EditBillPage(
             // 保存按钮
             Button(
                 onClick = {
-                    if (billId != null) {
+                    if (id != null) {
                         val updatedBill = Bill(
-                            id = billId,
+                            id = id,
                             isIncome = isIncome,
                             category = selectedCategory,
                             remarks = remark,
