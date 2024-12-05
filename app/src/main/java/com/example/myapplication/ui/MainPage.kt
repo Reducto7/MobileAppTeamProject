@@ -74,9 +74,6 @@ fun BillItem(bill: Bill, onClick: () -> Unit) {
     }
 }
 
-
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPage(
@@ -195,19 +192,18 @@ fun MainPage(
 
                 // 账单列表
                 LazyColumn(
-                    state = listState, // 绑定滚动状态
+                    state = listState,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // 将账单按日期进行排序，确保使用 LocalDate 进行比较
                     items(bills.sortedByDescending {
-                        LocalDate.parse(it.date, dateFormatter) // 将日期字符串转换为 LocalDate
+                        LocalDate.parse(it.date, dateFormatter)
                     }) { bill ->
                         BillItem(bill) {
-                            // 点击账单项跳转编辑页面
-                            navController.navigate("editBill/${bill.id}")
+                            navController.navigate("editBill/${bill.id}") // 传递账单的 ID
                         }
                     }
                 }
+
             }
         }
     }

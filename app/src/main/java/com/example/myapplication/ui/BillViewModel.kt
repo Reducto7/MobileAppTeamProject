@@ -34,22 +34,30 @@ class BillViewModel : ViewModel() {
 
     // 从 Firebase 数据库加载账单数据
     private fun fetchBillsFromDatabase() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        database.child(userId).addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                _bills.clear()
-                for (child in snapshot.children) {
-                    val bill = child.getValue(Bill::class.java)
-                    if (bill != null) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            database.child(userId).addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    _bills.clear()
+                    for (child in snapshot.children) {
+                        val id = child.child("id").getValue(Int::class.java) ?: 0
+                        val isIncome = child.child("income").getValue(Boolean::class.java) ?: false
+                        val category = child.child("category").getValue(String::class.java) ?: ""
+                        val remarks = child.child("remarks").getValue(String::class.java) ?: ""
+                        val amount = child.child("amount").getValue(Double::class.java) ?: 0.0
+                        val date = child.child("date").getValue(String::class.java) ?: ""
+
+                        val bill = Bill(id, isIncome, category, remarks, amount, date)
                         _bills.add(bill)
                     }
+                    println("加载的账单数据: $_bills")
                 }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-                println("加载账单失败: ${error.message}")
-            }
-        })
+                override fun onCancelled(error: DatabaseError) {
+                    println("加载账单失败: ${error.message}")
+                }
+            })
+        }
     }
 
     // 根据 ID 获取账单

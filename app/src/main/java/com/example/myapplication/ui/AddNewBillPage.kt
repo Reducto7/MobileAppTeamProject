@@ -80,6 +80,11 @@ fun AddNewBillPage(
     val appViewModel: AppViewModel = viewModel()
     var selectedDate by remember { mutableStateOf(appViewModel.getTodayDate()) }
     val context = LocalContext.current
+    val initialDate = selectedDate.split("-").map { it.toInt() }
+    val initialYear = initialDate[0]
+    val initialMonth = initialDate[1] - 1 // Month is zero-based in DatePickerDialog
+    val initialDay = initialDate[2]
+
 
     // 定义类别选项列表
     val incomeCategories = listOf("급여", "홍바오", "재테크", "임대료", "배당금", "선물", "기타")
@@ -92,7 +97,7 @@ fun AddNewBillPage(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Add New Bill" ) },
+                title = { Text(text = "추가" ) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("main") }) {
                         Icon(
@@ -133,7 +138,7 @@ fun AddNewBillPage(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Expenditure",
+                        text = "지출",
                         color = if (isIncome) Color.Black else Color.White
                     )
                 }
@@ -152,7 +157,7 @@ fun AddNewBillPage(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Income",
+                        text = "입금",
                         color = if (isIncome) Color.White else Color.Black
                     )
                 }
@@ -202,7 +207,7 @@ fun AddNewBillPage(
             OutlinedTextField(
                 value = remark,
                 onValueChange = { newText -> remark = newText },
-                label = { Text("Enter Remarks") },
+                label = { Text("메모") },
                 modifier = Modifier
                     .fillMaxWidth()
             )
@@ -215,21 +220,29 @@ fun AddNewBillPage(
                         amount = newAmount
                     }
                 },
-                label = { Text("Amount") },
+                label = { Text("금액") },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // 日期选择器
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { appViewModel.showDatePicker(context) { date -> selectedDate = date } }
-                    .padding(0.dp)
+                    .clickable {
+                        DatePickerDialog(context, { _, year, month, day ->
+                            selectedDate = "$year-${month + 1}-$day"
+                        },
+                            initialYear,
+                            initialMonth,
+                            initialDay
+                        ).show()
+                    }
             ) {
                 OutlinedTextField(
                     value = selectedDate,
                     onValueChange = { },
-                    label = { Text("Select Date") },
+                    label = { Text("시간 선택") },
                     readOnly = true,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = false
@@ -267,7 +280,7 @@ fun AddNewBillPage(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Add")
+                Text(text = "추가")
             }
         }
     }
