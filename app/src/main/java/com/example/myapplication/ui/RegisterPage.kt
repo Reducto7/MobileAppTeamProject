@@ -1,5 +1,6 @@
 package com.example.myapplication.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -35,8 +37,12 @@ import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
+import com.example.myapplication.R
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 
 
@@ -46,15 +52,17 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
 
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var comfirm by rememberSaveable { mutableStateOf("") }
     var isDialogVisible by rememberSaveable { mutableStateOf(false) }
     var isRegistrationSuccessful by rememberSaveable { mutableStateOf(false) }
+    val passwordVisible = remember { mutableStateOf(false) }
     var dialogMessage by rememberSaveable { mutableStateOf("") }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Register Page") },
+                title = { Text(text = "회원가입") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("login") }) {
                         Icon(
@@ -74,8 +82,11 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            Spacer(modifier = Modifier.height(80.dp))
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = null,
+                modifier = Modifier.size(200.dp)
+            )
 
             OutlinedTextField(
                 value = email,
@@ -90,6 +101,25 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
+                        Icon(
+                            painter = painterResource(id = if (passwordVisible.value) R.drawable.visibility else R.drawable.visibility_off),
+                            contentDescription = "Toggle password visibility"
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = comfirm,
+                onValueChange = { comfirm = it },
+                label = { Text("Confirm Password") },
+                isError = password.isNotEmpty() && comfirm.isNotEmpty() && comfirm != password,
                 keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done // 将转行键设置为“确认键”
@@ -97,7 +127,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (email.isBlank() || password.isBlank()) {
-                            dialogMessage = "邮箱和密码不能为空。"
+                            dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
                             isDialogVisible = true
                         } else {
                             registerUser(email, password) { success, message ->
@@ -108,6 +138,15 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                         }
                     }
                 ),
+                visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
+                        Icon(
+                            painter = painterResource(id = if (passwordVisible.value) R.drawable.visibility else R.drawable.visibility_off),
+                            contentDescription = "Toggle password visibility"
+                        )
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
             )
@@ -117,7 +156,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
             Button(
                 onClick = {
                     if (email.isBlank() || password.isBlank()) {
-                        dialogMessage = "邮箱和密码不能为空。"
+                        dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
                         isDialogVisible = true
                     } else {
                         registerUser(email, password) { success, message ->
@@ -131,7 +170,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "Register",
+                    text = "회원가입",
                     style = typography.titleMedium
                 )
             }
@@ -157,11 +196,11 @@ fun registerUser(email: String, password: String, onResult: (Boolean, String) ->
     val auth = FirebaseAuth.getInstance()
     auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
         if (task.isSuccessful) {
-            onResult(true, "您已成功注册！")
+            onResult(true, "회원가입이 성공적으로 완료되었습니다!")
         } else {
             val errorMessage = when (val exception = task.exception) {
-                is FirebaseAuthUserCollisionException -> "该邮箱已被注册。"
-                else -> "注册失败，请重试。原因：${exception?.localizedMessage ?: "未知错误"}"
+                is FirebaseAuthUserCollisionException -> "이 이메일은 이미 등록되었습니다"
+                else -> "회원가입에 실패했습니다. 다시 시도해주세요. 원인: ${exception?.localizedMessage ?: "알 수 없는 오류"}"
             }
             onResult(false, errorMessage)
         }
@@ -177,11 +216,11 @@ fun RegisterDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = if (message == "您已成功注册！") "注册成功" else "注册失败") },
+        title = { Text(text = if (message == "회원가입이 성공적으로 완료되었습니다!") "회원가입 성공" else "회원가입 실패") },
         text = { Text(text = message) },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("确定")
+                Text("확인")
             }
         },
         modifier = modifier

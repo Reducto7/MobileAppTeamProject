@@ -55,7 +55,7 @@ android {
 dependencies {
 
     // Import the BoM for the Firebase platform
-    implementation(libs.firebase.bom.v3231)
+    implementation(platform(libs.firebase.bom.v3231))
 
     // Add the dependency for the Firebase Authentication library
     // When using the BoM, you don't specify versions in Firebase library dependencies
@@ -97,8 +97,18 @@ dependencies {
     implementation( libs.androidx.material3.vlatestversion)
 
     implementation (libs.firebase.database.ktx)
-    implementation ("com.google.dagger:hilt-android:2.51.1")
-    kapt ("com.google.dagger:hilt-compiler:2.51.1")
+    implementation (libs.hilt.android)
+    kapt (libs.hilt.compiler)
+
+    implementation ("com.google.firebase:firebase-database:20.3.0")
+    implementation ("com.google.firebase:firebase-auth:21.1.0")
+
+
+    implementation("androidx.compose.ui:ui:1.5.0")
+    implementation("androidx.compose.material:material:1.5.0")
+    implementation ("androidx.compose.foundation:foundation:1.5.0")
+    implementation ("androidx.compose.material3:material3:1.1.0")
+
 
 }
 

@@ -1,11 +1,18 @@
 package com.example.teamproject.ui
 
+import android.app.DatePickerDialog
+import android.content.Context
+import android.widget.CalendarView
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,11 +50,24 @@ import androidx.navigation.NavController
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.MutableState
 import com.example.myapplication.ui.Bill
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,13 +82,11 @@ fun AddNewBillPage(
     val context = LocalContext.current
 
     // 定义类别选项列表
-    val incomeCategories = listOf("Salary", "Red Envelope", "Financial Management", "Rent", "Dividends", "Gifts", "Other")
-    val expenditureCategories = listOf("Dining", "Shopping", "Daily Use", "Transportation", "Sports", "Entertainment", "Accommodation", "Other")
+    val incomeCategories = listOf("급여", "홍바오", "재테크", "임대료", "배당금", "선물", "기타")
+    val expenditureCategories = listOf("식사", "쇼핑", "일상용품", "교통", "운동", "오락", "숙박", "기타")
     val categories = if (isIncome) incomeCategories else expenditureCategories
-    var expanded by remember { mutableStateOf(false) } // 控制下拉菜单的显示状态
+    val categoryIcons = List(categories.size) { Icons.Filled.Star }  // 用相同的图标作为示例
     var selectedCategory by remember { mutableStateOf(categories[0]) } // 保存用户选择的类别
-
-
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -89,7 +107,7 @@ fun AddNewBillPage(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(32.dp)
+                .padding(horizontal = 32.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -98,7 +116,7 @@ fun AddNewBillPage(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 OutlinedButton(
@@ -142,44 +160,39 @@ fun AddNewBillPage(
 
             }
 
-            // 类别选择框
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = selectedCategory,
-                    onValueChange = { },
-                    label = { Text(if (isIncome) "Select Income Category" else "Select Expenditure Category") },
-                    readOnly = true,
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowDropDown,
-                            contentDescription = "选择类别",
-                            modifier = Modifier.clickable { expanded = true }
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { expanded = true }
-                )
-
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { expanded = true }
-                        .background(Color.Transparent)
-                )
-
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.width(400.dp)
-                ) {
-                    categories.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category) },
-                            onClick = {
-                                selectedCategory = category
-                                expanded = false
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),  // 每行固定 4 个图标
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                itemsIndexed(categories) { index, category ->
+                    val isSelected = category == selectedCategory
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(8.dp)  // 为每个图标及其文本添加间距
+                            .clickable(
+                            indication = null,  // 去掉点击时的灰色背景效果
+                            interactionSource = remember { MutableInteractionSource() }  // 必须提供一个interactionSource
+                        ){
+                                selectedCategory = category // 只点击图标时更改选中的类别
                             }
+                    ) {
+                        // 仅将图标设置为可点击并去掉点击效果的灰色背景
+                        Icon(
+                            imageVector = categoryIcons[index],
+                            contentDescription = category,
+                            tint = if (isSelected) Color.White else Color.Black,  // 改变图标颜色
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    color = if (isSelected) Color.Black else Color.Transparent,  // 如果选中，背景为黑色，否则透明
+                                    shape = CircleShape
+                                ).padding(8.dp)
+                        )
+                        // 文本部分不再可点击
+                        Text(
+                            text = category
                         )
                     }
                 }
@@ -192,7 +205,6 @@ fun AddNewBillPage(
                 label = { Text("Enter Remarks") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp)
             )
 
             // 输入金额（只能输入数字）
@@ -223,6 +235,7 @@ fun AddNewBillPage(
                     enabled = false
                 )
             }
+
 
             Spacer(modifier = Modifier.height(8.dp))
 
