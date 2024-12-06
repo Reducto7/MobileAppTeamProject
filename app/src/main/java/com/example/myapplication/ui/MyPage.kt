@@ -12,12 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.myapplication.R
 import com.google.firebase.auth.FirebaseAuth
@@ -27,17 +29,20 @@ import com.google.firebase.auth.FirebaseAuth
 @Composable
 fun MyPage(
     navController: NavController,
-    totalDays: Int = 100,
-    totalRecords: Int = 300
+    viewModel: BillViewModel = viewModel()
 ) {
     val currentUser = FirebaseAuth.getInstance().currentUser
     val accountName = currentUser?.email?.substringBefore("@") ?: "Guest" // 默认显示 "Guest" 如果用户未登录
+
+    val totalRecords = viewModel.bills.size
+    val totalDays = viewModel.getBillCountAndDays()
+
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "My Page") },
+                title = { Text(text = "마이") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("main") }) {
                         Icon(
@@ -45,7 +50,8 @@ fun MyPage(
                             contentDescription = "back"
                         )
                     }
-                }
+                },
+                modifier = Modifier.fillMaxWidth().shadow(8.dp)
             )
         },
         content = { paddingValues ->
@@ -115,12 +121,12 @@ fun AccountStatsSection(totalDays: Int, totalRecords: Int) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "总记账天数：$totalDays",
+            text = "총 청구일 수：$totalDays",
             fontSize = 18.sp,
             //color = Color.White // 设置字体颜色为白色
         )
         Text(
-            text = "总记账笔数：$totalRecords",
+            text = "총 항목 수：$totalRecords",
             fontSize = 18.sp,
             //color = Color.White // 设置字体颜色为白色
         )
@@ -137,13 +143,13 @@ fun FunctionButtonsSection(navController: NavController) {
             onClick = {
                 // 退出账号并跳转到登录页面
                 navController.navigate("login") {
-                    popUpTo("mypage") { inclusive = true }
+                    popUpTo("my") { inclusive = true }
                 }
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
         ) {
-            Text(text = "退出账号")
+            Text(text = "로그아웃")
         }
     }
 }

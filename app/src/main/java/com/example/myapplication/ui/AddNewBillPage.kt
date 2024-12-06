@@ -1,39 +1,44 @@
 package com.example.teamproject.ui
 
 import android.app.DatePickerDialog
-import android.content.Context
-import android.widget.CalendarView
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,57 +46,41 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.runtime.MutableState
+import com.example.myapplication.R
 import com.example.myapplication.ui.Bill
-import com.google.android.material.datepicker.MaterialDatePicker
+import com.example.myapplication.ui.BillViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddNewBillPage(
-    navController: NavController
+    navController: NavController,
+    viewModel: BillViewModel = viewModel()
 ) {
     var isIncome by remember { mutableStateOf(false) } // 控制是收入还是支出页面
     var remark by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
-    val appViewModel: AppViewModel = viewModel()
-    var selectedDate by remember { mutableStateOf(appViewModel.getTodayDate()) }
+    var selectedDate by remember { mutableStateOf(viewModel.getTodayDate()) }
     val context = LocalContext.current
     val initialDate = selectedDate.split("-").map { it.toInt() }
     val initialYear = initialDate[0]
     val initialMonth = initialDate[1] - 1 // Month is zero-based in DatePickerDialog
     val initialDay = initialDate[2]
 
+// 根据 isIncome 判断选择收入或支出类别
+    val categories = if (isIncome) viewModel.incomeCategories else viewModel.expenditureCategories
 
-    // 定义类别选项列表
-    val incomeCategories = listOf("급여", "홍바오", "재테크", "임대료", "배당금", "선물", "기타")
-    val expenditureCategories = listOf("식사", "쇼핑", "일상용품", "교통", "운동", "오락", "숙박", "기타")
-    val categories = if (isIncome) incomeCategories else expenditureCategories
-    val categoryIcons = List(categories.size) { Icons.Filled.Star }  // 用相同的图标作为示例
-    var selectedCategory by remember { mutableStateOf(categories[0]) } // 保存用户选择的类别
+// 通过 selectedCategory 保存选中的类别
+    var selectedCategory by remember { mutableStateOf("") }  // 获取类别名称
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -105,7 +94,8 @@ fun AddNewBillPage(
                             contentDescription = "back"
                         )
                     }
-                }
+                },
+                modifier = Modifier.fillMaxWidth().shadow(8.dp)
             )
         }
     ) { innerPadding ->
@@ -117,6 +107,7 @@ fun AddNewBillPage(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
             // 横向切换按钮
             Row(
                 modifier = Modifier
@@ -127,7 +118,7 @@ fun AddNewBillPage(
                 OutlinedButton(
                     onClick = {
                         isIncome = false
-                        selectedCategory = expenditureCategories[0]
+                        selectedCategory = ""
                     },
                     shape = RoundedCornerShape(topStart = 50.dp, bottomStart = 50.dp),
                     border = BorderStroke(1.dp, Color.Black),
@@ -146,7 +137,7 @@ fun AddNewBillPage(
                 OutlinedButton(
                     onClick = {
                         isIncome = true
-                        selectedCategory = incomeCategories[0]
+                        selectedCategory = ""
                     },
                     shape = RoundedCornerShape(topEnd = 50.dp, bottomEnd = 50.dp),
                     border = BorderStroke(1.dp, Color.Black),
@@ -166,11 +157,11 @@ fun AddNewBillPage(
             }
 
             LazyVerticalGrid(
-                columns = GridCells.Fixed(4),  // 每行固定 4 个图标
+                columns = GridCells.Fixed(5),  // 每行固定 4 个图标
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(0.dp)
             ) {
-                itemsIndexed(categories) { index, category ->
+                itemsIndexed(categories) {  index, (category, icon) ->
                     val isSelected = category == selectedCategory
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -185,7 +176,7 @@ fun AddNewBillPage(
                     ) {
                         // 仅将图标设置为可点击并去掉点击效果的灰色背景
                         Icon(
-                            imageVector = categoryIcons[index],
+                            painter = painterResource(id = icon),
                             contentDescription = category,
                             tint = if (isSelected) Color.White else Color.Black,  // 改变图标颜色
                             modifier = Modifier
@@ -195,10 +186,7 @@ fun AddNewBillPage(
                                     shape = CircleShape
                                 ).padding(8.dp)
                         )
-                        // 文本部分不再可点击
-                        Text(
-                            text = category
-                        )
+                        Text(text = category)
                     }
                 }
             }
@@ -206,7 +194,7 @@ fun AddNewBillPage(
             // 输入备注
             OutlinedTextField(
                 value = remark,
-                onValueChange = { newText -> remark = newText },
+                onValueChange = { remark = it },
                 label = { Text("메모") },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -242,7 +230,7 @@ fun AddNewBillPage(
                 OutlinedTextField(
                     value = selectedDate,
                     onValueChange = { },
-                    label = { Text("시간 선택") },
+                    label = { Text("날짜") },
                     readOnly = true,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = false
@@ -272,13 +260,14 @@ fun AddNewBillPage(
                         // 清空表单内容并导航回主页面
                         remark = ""
                         amount = ""
-                        selectedDate = appViewModel.getTodayDate()
+                        selectedDate = viewModel.getTodayDate()
                         navController.navigate("main")
                     } else {
                         // 处理非法输入，例如提示用户补全表单
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp)
             ) {
                 Text(text = "추가")
             }

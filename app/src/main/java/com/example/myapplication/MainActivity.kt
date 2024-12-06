@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                     composable("addNewBill") {
                         AddNewBillPage(navController)
                     }
-                    composable("mypage"){
+                    composable("my"){
                         MyPage(navController)
                     }
                     composable("chart") {
