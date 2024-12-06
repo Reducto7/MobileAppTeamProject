@@ -1,6 +1,9 @@
 package com.example.myapplication.ui
 
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.myapplication.R
 import com.google.firebase.auth.FirebaseAuth
@@ -51,6 +54,11 @@ class BillViewModel : ViewModel() {
         "미용" to R.drawable.brush,
         "기타" to R.drawable.bubble
     )
+    
+    val monthData: MutableMap<String, List<Double>> = mutableMapOf()
+    val yearData: MutableMap<Int, List<Double>> = mutableMapOf()
+
+    var isIncomeSelected by mutableStateOf(false) // 控制收入或支出
 
 
     init {
@@ -185,4 +193,168 @@ class BillViewModel : ViewModel() {
 
         return 0
     }
+
+
+    // 计算某月每天的收入或支出总和
+    fun getDailyIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): List<Double> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    billDate[1] == month &&
+                    it.isIncome == isIncome
+        }
+
+        val daysInMonth = when (month) {
+            2 -> if (isLeapYear(year)) 29 else 28
+            4, 6, 9, 11 -> 30
+            else -> 31
+        }
+
+        val dailyTotals = MutableList(daysInMonth) { 0.0 }
+
+        filteredBills.forEach {
+            val day = it.date.split("-")[2].toIntOrNull() ?: 1
+            if (day in 1..daysInMonth) dailyTotals[day - 1] += it.amount
+        }
+
+        return dailyTotals
+    }
+
+    // 计算某年每月的收入或支出总和
+    fun getMonthlyIncomeExpenditure(year: Int, isIncome: Boolean): List<Double> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    it.isIncome == isIncome
+        }
+
+        val monthlyTotals = MutableList(12) { 0.0 }
+
+        filteredBills.forEach {
+            val month = it.date.split("-")[1].toIntOrNull() ?: 1
+            if (month in 1..12) monthlyTotals[month - 1] += it.amount
+        }
+
+        return monthlyTotals
+    }
+
+    //计算某年的各类别收入和支出year: Int, month: Int, isIncome: Boolean
+    fun getYearlyCategoryIncomeExpenditure(year: Int, isIncome: Boolean): Map<String, Double> {
+        return _bills
+            .filter {
+                val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+                billDate.size == 3 && billDate[0] == year && it.isIncome == isIncome
+            }
+            .groupBy { it.category }
+            .mapValues { (_, bills) -> bills.sumOf { it.amount } }
+    }
+
+    //计算某年某月的各类别收入和支出
+    fun getMonthlyCategoryIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): Map<String, Double> {
+        return _bills
+            .filter {
+                val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+                billDate.size == 3 && billDate[0] == year && billDate[1] == month && it.isIncome == isIncome
+
+            }
+
+            .groupBy { it.category }
+            .mapValues { (_, bills) -> bills.sumOf { it.amount } }
+    }
+
+    // 判断是否为闰年
+    private fun isLeapYear(year: Int): Boolean {
+        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    }
+
+    //详情分析页面
+    fun getBillsForCategory(category: String, year: Int, month: Int?): List<Bill> {
+        return _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    billDate[1] == month &&
+                    it.category == category
+        }
+    }
+
+    fun getMonthlyTotalsForCategory(category: String, year: Int, isIncome: Boolean): List<Float> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    it.category == category &&
+                    it.isIncome == isIncome
+        }
+        val monthlyTotals = MutableList(12) { 0f }
+        filteredBills.forEach {
+            val month = it.date.split("-")[1].toIntOrNull() ?: 1
+            if (month in 1..12) monthlyTotals[month - 1] += it.amount.toFloat()
+        }
+        return monthlyTotals
+    }
+
+    fun getPieChartDataForCategory(category: String, year: Int, month: Int, isIncome: Boolean): List<Pair<String, Float>> {
+        val filteredBills = _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    billDate[1] == month &&
+                    it.category == category &&
+                    it.isIncome == isIncome
+        }
+        val totalAmount = filteredBills.sumOf { it.amount }
+        return filteredBills.map {
+            it.remarks to (it.amount / totalAmount * 100).toFloat()
+        }.sortedByDescending { it.second }
+    }
+
+    fun getYearlyTotalsForCategory(
+        category: String,
+        year: Int,
+        isIncome: Boolean
+    ): List<Float> {
+        // 按月份汇总指定类别的收入或支出
+        val monthlyTotals = MutableList(12) { 0f }
+
+        bills.filter { bill ->
+            val billDate = bill.date.split("-").mapNotNull { it.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    bill.category == category &&
+                    bill.isIncome == isIncome
+        }.forEach { bill ->
+            val month = bill.date.split("-")[1].toIntOrNull() ?: 1
+            if (month in 1..12) {
+                monthlyTotals[month - 1] += bill.amount.toFloat()
+            }
+        }
+
+        return monthlyTotals
+    }
+
+    fun updateData() {
+        monthData["1월"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
+        monthData["2월"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
+        monthData["3월"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
+        monthData["4월"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
+        monthData["5월"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
+        monthData["6월"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
+        monthData["7월"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
+        monthData["8월"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
+        monthData["9월"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
+        monthData["10월"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
+        monthData["11월"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
+        monthData["12월"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
+
+        // 更新年数据
+        yearData[2020] = getMonthlyIncomeExpenditure(2020, isIncomeSelected)
+        yearData[2021] = getMonthlyIncomeExpenditure(2021, isIncomeSelected)
+        yearData[2022] = getMonthlyIncomeExpenditure(2022, isIncomeSelected)
+        yearData[2023] = getMonthlyIncomeExpenditure(2023, isIncomeSelected)
+        yearData[2024] = getMonthlyIncomeExpenditure(2024, isIncomeSelected)
+    }
+
 }

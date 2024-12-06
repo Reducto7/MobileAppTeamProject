@@ -8,8 +8,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.myapplication.ui.BillViewModel
 import com.example.myapplication.ui.ChartPage
-import com.example.myapplication.ui.ChartViewModel
 import com.example.myapplication.ui.DetailsPage
 import com.example.myapplication.ui.EditBillPage
 import com.example.myapplication.ui.LoginPage
@@ -28,11 +28,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 val navController = rememberNavController()
-                val viewModel: ChartViewModel = viewModel()
+                val viewModel: BillViewModel = viewModel()
 
                 NavHost(
                     navController = navController,
-                    startDestination = "login"
+                    startDestination = "main"
                 ) {
                     composable(route = "login") {
                         LoginPage(navController, context = this@MainActivity)
