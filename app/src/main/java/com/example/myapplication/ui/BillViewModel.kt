@@ -96,7 +96,6 @@ class BillViewModel : ViewModel() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
             // 创建一个新的账单条目
-            val billId = database.child(userId).push().key ?: return  // 生成一个唯一的 ID
             val billData = mapOf(
                 "id" to bill.id,
                 "income" to bill.isIncome,
@@ -107,7 +106,7 @@ class BillViewModel : ViewModel() {
             )
 
             // 上传账单数据到 Firebase
-            database.child(userId).child(billId).setValue(billData)
+            database.child(userId).child(bill.id.toString()).setValue(billData)
                 .addOnSuccessListener {
                     println("账单上传成功")
                 }

@@ -4,8 +4,11 @@ import android.content.Context
 import android.icu.util.Calendar
 import android.view.View
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +28,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.BottomAppBar
@@ -50,11 +55,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -169,6 +176,8 @@ fun BillItem(
 
 
 
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPage(
@@ -198,7 +207,9 @@ fun MainPage(
         derivedStateOf {
             bills
                 .filter { it.isIncome }  // 只选择收入账单
-                .filter { bill -> bill.date.split("-").getOrNull(1) == currentMonth.split("월").getOrNull(0) }  // 过滤出当前月份的账单
+                .filter { bill ->
+                    bill.date.split("-").getOrNull(1) == currentMonth.split("월").getOrNull(0)
+                }  // 过滤出当前月份的账单
                 .sumOf { it.amount }  // 计算总收入
         }
     }
@@ -206,10 +217,15 @@ fun MainPage(
         derivedStateOf {
             bills
                 .filter { !it.isIncome }  // 只选择支出账单
-                .filter { bill -> bill.date.split("-").getOrNull(1) == currentMonth.split("월").getOrNull(0) }  // 过滤出当前月份的账单
+                .filter { bill ->
+                    bill.date.split("-").getOrNull(1) == currentMonth.split("월").getOrNull(0)
+                }  // 过滤出当前月份的账单
                 .sumOf { it.amount }  // 计算总支出
         }
     }
+
+    var isDateChanged by remember { mutableStateOf(false) }
+
 
     Scaffold(
         topBar = {
@@ -236,13 +252,19 @@ fun MainPage(
                                 IconButton(
                                     onClick = {
                                         // 弹出年月选择器
-                                        ShowMonthPicker(context, currentYear, currentMonth) { selectedMonth ->
+                                        ShowMonthPicker(
+                                            context,
+                                            currentYear,
+                                            currentMonth
+                                        ) { selectedMonth ->
                                             // 更新显示的月份
                                             currentMonth = "${selectedMonth.split("-")[1]}월"
                                             currentYear = "${selectedMonth.split("-")[0]}년"
+                                            // 设置触发状态为 true
+                                            isDateChanged = true
                                         }
                                     }
-                                ){
+                                ) {
                                     Icon(
                                         imageVector = Icons.Filled.KeyboardArrowDown,
                                         contentDescription = "Dropdown",
@@ -254,7 +276,7 @@ fun MainPage(
 
                         // 右侧显示收入和支出的文本
                         Row() {
-                            Column (horizontalAlignment = Alignment.End){
+                            Column(horizontalAlignment = Alignment.End) {
                                 Text(
                                     text = "수입",
                                     color = Color.Black,
@@ -267,7 +289,7 @@ fun MainPage(
                                 )
                             }
                             Spacer(modifier = Modifier.width(40.dp))
-                            Column (horizontalAlignment = Alignment.End){
+                            Column(horizontalAlignment = Alignment.End) {
                                 Text(
                                     text = "지출",
                                     color = Color.Black,
@@ -363,85 +385,128 @@ fun MainPage(
                     state = listState,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(sortedBills) { bill ->
-                        BillItem(
-                            bill = bill,
-                            onClick = {
-                                navController.navigate("editBill/${bill.id}") // 传递账单的 ID
-                            },
-                            viewModel = viewModel() // 传递 ViewModel 给 BillItem
-                        )
-                    }
-                }
+                    items(
+                        sortedBills,
+                        key = { it.id } // 确保每个item唯一，避免重叠的删除操作
+                    ) { bill ->
+                        var offsetX by remember { mutableStateOf(0f) }
+                        val isDismissed = remember { mutableStateOf(false) }
 
-                // 滚动到特定月份或年份
-                suspend fun scrollToBillByDate(
-                    targetYear: String?,
-                    targetMonth: String?,
-                    sortedBills: List<Bill>,
-                    listState: LazyListState
-                ) {
-                    val targetIndex = sortedBills.indexOfFirst { bill ->
-                        val dateParts = bill.date.split("-")
-                        val year = dateParts.getOrNull(0)
-                        val month = dateParts.getOrNull(1)?.toIntOrNull()?.toString()
-                        (targetYear == null || year == targetYear) && (targetMonth == null || month == targetMonth)
-                    }
+                        // BillItem with swipe gesture logic
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                                .offset { IntOffset(offsetX.toInt(), 0) } // Apply the horizontal offset
+                                .pointerInput(Unit) {
+                                    detectHorizontalDragGestures { _, dragAmount ->
+                                        // Update the horizontal offset based on drag amount
+                                        offsetX = (offsetX + dragAmount).coerceIn(
+                                            -1000f,
+                                            0f
+                                        ) // Limit drag range
 
-                    if (targetIndex >= 0) {
-                        listState.scrollToItem(targetIndex)
-                    }else {
-                        // 滚动到最底部
-                        //listState.scrollToItem(sortedBills.lastIndex)
-                    }
-                }
-
-// 监听年份和月份变化，自动滚动到对应账单
-                LaunchedEffect(currentYear, currentMonth, sortedBills) {
-                    // 等待 Firebase 数据加载完成后再进行滚动
-                    snapshotFlow { sortedBills.isNotEmpty() }
-                        .collect { isDataLoaded ->
-                            if (isDataLoaded) {
-                                // 提取当前选择的年份和月份
-                                val year = currentYear.takeIf { it != "未知年份" }?.removeSuffix("년")
-                                val month = currentMonth.takeIf { it != "未知月份" }?.removeSuffix("월")
-
-                                // 查找是否有对应的账单
-                                val matchingBillIndex = sortedBills.indexOfFirst { bill ->
-                                    val billYear = bill.date.substring(0, 4) // 提取年份
-                                    val billMonth = bill.date.substring(5, 7) // 提取月份
-                                    billYear == year && billMonth == month
+                                        // Delete bill when drag threshold is crossed
+                                        if (offsetX <= -1000f && !isDismissed.value) {
+                                            viewModel.deleteBill(bill.id) // Call the delete function
+                                            isDismissed.value = true
+                                        }
+                                    }
                                 }
+                        ) {
+                            BillItem(
+                                bill = bill,
+                                onClick = {
+                                    navController.navigate("editBill/${bill.id}") // 传递账单的 ID
+                                },
+                                viewModel = viewModel // 传递 ViewModel 给 BillItem
+                            )
+                        }
 
-                                if (matchingBillIndex != -1) {
-                                    // 如果找到了对应的账单，滚动到对应的位置
-                                    scrollToBillByDate(year, month, sortedBills, listState)
-                                } else {
-                                    // 如果没有对应的账单，滚动到最底端
-                                    listState.scrollToItem(sortedBills.size - 1)
+                        // 滚动到特定月份或年份
+                        suspend fun scrollToBillByDate(
+                            targetYear: String?,
+                            targetMonth: String?,
+                            sortedBills: List<Bill>,
+                            listState: LazyListState
+                        ) {
+                            val targetIndex = sortedBills.indexOfFirst { bill ->
+                                val dateParts = bill.date.split("-")
+                                val year = dateParts.getOrNull(0)
+                                val month = dateParts.getOrNull(1)?.toIntOrNull()?.toString()
+                                (targetYear == null || year == targetYear) && (targetMonth == null || month == targetMonth)
+                            }
 
-                                }
+                            if (targetIndex >= 0) {
+                                listState.scrollToItem(targetIndex)
                             }
                         }
-                }
 
-// 动态监听滚动，更新当前可视账单的年份和月份
-                LaunchedEffect(listState, sortedBills) {
-                    snapshotFlow { listState.firstVisibleItemIndex }
-                        .collect { index ->
-                            val visibleBill = sortedBills.getOrNull(index)
-                            if (visibleBill != null) {
-                                val dateParts = visibleBill.date.split("-")
-                                val month = dateParts.getOrNull(1)?.toIntOrNull() // 提取月份
-                                val year = dateParts.getOrNull(0) // 提取年份
-                                firstVisibleBillId = visibleBill.id
-                                currentMonth = if (month != null) "${month}월" else "未知月份"
-                                currentYear = year?.let { "${it}년" } ?: "未知年份"
+                        // 监听年份和月份变化，自动滚动到对应账单
+                        LaunchedEffect(currentYear, currentMonth, sortedBills, isDateChanged) {
+                            if (isDateChanged) {
+                                snapshotFlow { sortedBills.isNotEmpty() }
+                                    .collect { isDataLoaded ->
+                                        if (isDataLoaded) {
+                                            // 提取当前选择的年份和月份
+                                            val year = currentYear.takeIf { it != "未知年份" }
+                                                ?.removeSuffix("년")
+                                            val month = currentMonth.takeIf { it != "未知月份" }
+                                                ?.removeSuffix("월")
+
+                                            // 查找是否有对应的账单
+                                            val matchingBillIndex =
+                                                sortedBills.indexOfFirst { bill ->
+                                                    val billYear = bill.date.substring(0, 4) // 提取年份
+                                                    val billMonth = bill.date.substring(5, 7) // 提取月份
+                                                    billYear == year && billMonth == month
+                                                }
+
+                                            if (matchingBillIndex != -1) {
+                                                // 如果找到了对应的账单，滚动到对应的位置
+                                                scrollToBillByDate(
+                                                    year,
+                                                    month,
+                                                    sortedBills,
+                                                    listState
+                                                )
+                                            } else {
+                                                // 如果没有对应的账单，滚动到最底端
+                                                listState.scrollToItem(sortedBills.size - 1)
+                                            }
+
+                                            // 重置触发状态
+                                            isDateChanged = false
+                                        }
+                                    }
                             }
                         }
+
+
+                        // 动态监听滚动，更新当前可视账单的年份和月份
+                        LaunchedEffect(listState, sortedBills) {
+                            snapshotFlow { listState.firstVisibleItemIndex }
+                                .collect { index ->
+                                    val visibleBill = sortedBills.getOrNull(index)
+                                    if (visibleBill != null) {
+                                        val dateParts = visibleBill.date.split("-")
+                                        val month = dateParts.getOrNull(1)?.toIntOrNull() // 提取月份
+                                        val year = dateParts.getOrNull(0) // 提取年份
+
+                                        if (year != currentYear || month != currentMonth.toIntOrNull()) {
+                                            firstVisibleBillId = visibleBill.id
+                                            currentMonth = if (month != null) "${month}월" else "未知月份"
+                                            currentYear = year?.let { "${it}년" } ?: "未知年份"
+                                        }
+                                    }
+                                }
+                        }
+
+                    }
                 }
             }
         }
+
     }
 }
 
@@ -486,7 +551,6 @@ fun ShowMonthPicker(
 
     datePickerDialog.show() // Show the date picker dialog
 }
-
 
 
 
