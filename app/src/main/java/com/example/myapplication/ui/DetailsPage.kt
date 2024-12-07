@@ -262,10 +262,10 @@ fun DetailsPage(
                     maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
                     onCategoryClick = { /*TODO*/ }
                 )
-                    }
             }
         }
     }
+}
 
 
 //
@@ -368,3 +368,4 @@ fun VerticalBarChartWithLabels(
         }
     }
 }
+
