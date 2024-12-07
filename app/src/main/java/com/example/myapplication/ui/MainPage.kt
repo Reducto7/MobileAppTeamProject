@@ -397,10 +397,32 @@ fun MainPage(
                 }
 
 // 监听年份和月份变化，自动滚动到对应账单
-                LaunchedEffect(currentYear, currentMonth) {
-                    val year = currentYear.takeIf { it != "未知年份" }?.removeSuffix("년")
-                    val month = currentMonth.takeIf { it != "未知月份" }?.removeSuffix("월")
-                    scrollToBillByDate(year, month, sortedBills, listState)
+                LaunchedEffect(currentYear, currentMonth, sortedBills) {
+                    // 等待 Firebase 数据加载完成后再进行滚动
+                    snapshotFlow { sortedBills.isNotEmpty() }
+                        .collect { isDataLoaded ->
+                            if (isDataLoaded) {
+                                // 提取当前选择的年份和月份
+                                val year = currentYear.takeIf { it != "未知年份" }?.removeSuffix("년")
+                                val month = currentMonth.takeIf { it != "未知月份" }?.removeSuffix("월")
+
+                                // 查找是否有对应的账单
+                                val matchingBillIndex = sortedBills.indexOfFirst { bill ->
+                                    val billYear = bill.date.substring(0, 4) // 提取年份
+                                    val billMonth = bill.date.substring(5, 7) // 提取月份
+                                    billYear == year && billMonth == month
+                                }
+
+                                if (matchingBillIndex != -1) {
+                                    // 如果找到了对应的账单，滚动到对应的位置
+                                    scrollToBillByDate(year, month, sortedBills, listState)
+                                } else {
+                                    // 如果没有对应的账单，滚动到最底端
+                                    listState.scrollToItem(sortedBills.size - 1)
+
+                                }
+                            }
+                        }
                 }
 
 // 动态监听滚动，更新当前可视账单的年份和月份
@@ -431,6 +453,9 @@ fun ShowMonthPicker(
 ) {
     val calendar = Calendar.getInstance()
 
+    // 获取当前日期（当日）
+    val today = calendar.time
+
     // Set initial year and month
     val year = initialYear.split("년")[0].toInt()
     val month = initialMonth.split("월")[0].toInt() - 1 // month is 0-based
@@ -447,6 +472,9 @@ fun ShowMonthPicker(
         1 // 设置默认日为 1
     )
 
+    // Set the max date to today's date, so no future date can be selected
+    datePickerDialog.datePicker.maxDate = today.time // 设置最大日期为当前日期
+
     // Hide the day selector
     try {
         val daySpinnerId = context.resources.getIdentifier("android:id/day", null, null)
@@ -458,6 +486,7 @@ fun ShowMonthPicker(
 
     datePickerDialog.show() // Show the date picker dialog
 }
+
 
 
 

@@ -3,6 +3,7 @@ package com.example.myapplication.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.myapplication.R
@@ -54,12 +55,8 @@ class BillViewModel : ViewModel() {
         "미용" to R.drawable.brush,
         "기타" to R.drawable.bubble
     )
-    
-    val monthData: MutableMap<String, List<Double>> = mutableMapOf()
-    val yearData: MutableMap<Int, List<Double>> = mutableMapOf()
 
     var isIncomeSelected by mutableStateOf(false) // 控制收入或支出
-
 
     init {
         // 初始化时加载账单数据
@@ -222,7 +219,7 @@ class BillViewModel : ViewModel() {
     }
 
 
-    // 计算某月每天的收入或支出总和
+    // 计算某年某月每天的收入或支出总和
     fun getDailyIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): List<Double> {
         val filteredBills = _bills.filter {
             val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
@@ -360,28 +357,6 @@ class BillViewModel : ViewModel() {
         }
 
         return monthlyTotals
-    }
-
-    fun updateData() {
-        monthData["1월"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
-        monthData["2월"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
-        monthData["3월"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
-        monthData["4월"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
-        monthData["5월"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
-        monthData["6월"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
-        monthData["7월"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
-        monthData["8월"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
-        monthData["9월"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
-        monthData["10월"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
-        monthData["11월"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
-        monthData["12월"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
-
-        // 更新年数据
-        yearData[2020] = getMonthlyIncomeExpenditure(2020, isIncomeSelected)
-        yearData[2021] = getMonthlyIncomeExpenditure(2021, isIncomeSelected)
-        yearData[2022] = getMonthlyIncomeExpenditure(2022, isIncomeSelected)
-        yearData[2023] = getMonthlyIncomeExpenditure(2023, isIncomeSelected)
-        yearData[2024] = getMonthlyIncomeExpenditure(2024, isIncomeSelected)
     }
 
 }

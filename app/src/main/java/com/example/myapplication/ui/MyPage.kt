@@ -121,12 +121,12 @@ fun AccountStatsSection(totalDays: Int, totalRecords: Int) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "총 청구일 수：$totalDays",
+            text = "총 청구일：$totalDays",
             fontSize = 18.sp,
             //color = Color.White // 设置字体颜色为白色
         )
         Text(
-            text = "총 항목 수：$totalRecords",
+            text = "총 항목：$totalRecords",
             fontSize = 18.sp,
             //color = Color.White // 设置字体颜色为白色
         )

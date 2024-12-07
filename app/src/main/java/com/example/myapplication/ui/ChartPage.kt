@@ -1,5 +1,6 @@
 package com.example.myapplication.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,13 +13,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,8 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,23 +37,23 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -65,11 +61,13 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.DpOffset
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -80,222 +78,12 @@ import java.net.URLEncoder
 import java.util.Calendar
 
 
-class ChartViewModel : ViewModel() {
-    private val database: DatabaseReference = FirebaseDatabase.getInstance().getReference("bills")
-    private val _bills = mutableStateListOf<Bill>()
-    val bills: List<Bill> get() = _bills
-
-    val monthData: MutableMap<String, List<Double>> = mutableMapOf()
-    val yearData: MutableMap<Int, List<Double>> = mutableMapOf()
-
-    var isIncomeSelected by mutableStateOf(false) // 控制收入或支出
-
-    init {
-        fetchBillsFromDatabase()
-    }
-
-    private fun fetchBillsFromDatabase() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId != null) {
-            database.child(userId).addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    _bills.clear()
-                    snapshot.children.mapNotNull { it.toBill() }.let { _bills.addAll(it) }
-                    println("加载的账单数据: $_bills")
-                    updateData() // 数据加载完成后更新 monthData
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    println("数据加载失败: ${error.message}")
-                }
-            })
-        }
-    }
-    fun updateData() {
-        monthData["1월"] = getDailyIncomeExpenditure(2024, 1, isIncomeSelected)
-        monthData["2월"] = getDailyIncomeExpenditure(2024, 2, isIncomeSelected)
-        monthData["3월"] = getDailyIncomeExpenditure(2024, 3, isIncomeSelected)
-        monthData["4월"] = getDailyIncomeExpenditure(2024, 4, isIncomeSelected)
-        monthData["5월"] = getDailyIncomeExpenditure(2024, 5, isIncomeSelected)
-        monthData["6월"] = getDailyIncomeExpenditure(2024, 6, isIncomeSelected)
-        monthData["7월"] = getDailyIncomeExpenditure(2024, 7, isIncomeSelected)
-        monthData["8월"] = getDailyIncomeExpenditure(2024, 8, isIncomeSelected)
-        monthData["9월"] = getDailyIncomeExpenditure(2024, 9, isIncomeSelected)
-        monthData["10월"] = getDailyIncomeExpenditure(2024, 10, isIncomeSelected)
-        monthData["11월"] = getDailyIncomeExpenditure(2024, 11, isIncomeSelected)
-        monthData["12월"] = getDailyIncomeExpenditure(2024, 12, isIncomeSelected)
-
-        // 更新年数据
-        yearData[2020] = getMonthlyIncomeExpenditure(2020, isIncomeSelected)
-        yearData[2021] = getMonthlyIncomeExpenditure(2021, isIncomeSelected)
-        yearData[2022] = getMonthlyIncomeExpenditure(2022, isIncomeSelected)
-        yearData[2023] = getMonthlyIncomeExpenditure(2023, isIncomeSelected)
-        yearData[2024] = getMonthlyIncomeExpenditure(2024, isIncomeSelected)
-    }
-
-
-    private fun DataSnapshot.toBill(): Bill? {
-        return try {
-            val id = child("id").getValue(Int::class.java) ?: 0
-            val isIncome = child("income").getValue(Boolean::class.java) ?: false
-            val category = child("category").getValue(String::class.java) ?: ""
-            val remarks = child("remarks").getValue(String::class.java) ?: ""
-            val amount = child("amount").getValue(Double::class.java) ?: 0.0
-            val date = child("date").getValue(String::class.java) ?: ""
-
-            Bill(id, isIncome, category, remarks, amount, date)
-        } catch (e: Exception) {
-            println("数据解析失败: $e")
-            null
-        }
-    }
-
-    // 计算某月每天的收入或支出总和
-    fun getDailyIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): List<Double> {
-        val filteredBills = _bills.filter {
-            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    billDate[1] == month &&
-                    it.isIncome == isIncome
-        }
-
-        val daysInMonth = when (month) {
-            2 -> if (isLeapYear(year)) 29 else 28
-            4, 6, 9, 11 -> 30
-            else -> 31
-        }
-
-        val dailyTotals = MutableList(daysInMonth) { 0.0 }
-
-        filteredBills.forEach {
-            val day = it.date.split("-")[2].toIntOrNull() ?: 1
-            if (day in 1..daysInMonth) dailyTotals[day - 1] += it.amount
-        }
-
-        return dailyTotals
-    }
-
-    // 计算某年每月的收入或支出总和
-    fun getMonthlyIncomeExpenditure(year: Int, isIncome: Boolean): List<Double> {
-        val filteredBills = _bills.filter {
-            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    it.isIncome == isIncome
-        }
-
-        val monthlyTotals = MutableList(12) { 0.0 }
-
-        filteredBills.forEach {
-            val month = it.date.split("-")[1].toIntOrNull() ?: 1
-            if (month in 1..12) monthlyTotals[month - 1] += it.amount
-        }
-
-        return monthlyTotals
-    }
-
-    //计算某年的各类别收入和支出year: Int, month: Int, isIncome: Boolean
-    fun getYearlyCategoryIncomeExpenditure(year: Int, isIncome: Boolean): Map<String, Double> {
-        return _bills
-            .filter {
-                val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-                billDate.size == 3 && billDate[0] == year && it.isIncome == isIncome
-            }
-            .groupBy { it.category }
-            .mapValues { (_, bills) -> bills.sumOf { it.amount } }
-    }
-
-    //计算某年某月的各类别收入和支出
-    fun getMonthlyCategoryIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): Map<String, Double> {
-        return _bills
-            .filter {
-                val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-                billDate.size == 3 && billDate[0] == year && billDate[1] == month && it.isIncome == isIncome
-
-            }
-
-            .groupBy { it.category }
-            .mapValues { (_, bills) -> bills.sumOf { it.amount } }
-    }
-
-    // 判断是否为闰年
-    private fun isLeapYear(year: Int): Boolean {
-        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-    }
-
-    //详情分析页面
-    fun getBillsForCategory(category: String, year: Int, month: Int?): List<Bill> {
-        return _bills.filter {
-            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    billDate[1] == month &&
-                    it.category == category
-        }
-    }
-
-    fun getMonthlyTotalsForCategory(category: String, year: Int, isIncome: Boolean): List<Float> {
-        val filteredBills = _bills.filter {
-            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    it.category == category &&
-                    it.isIncome == isIncome
-        }
-        val monthlyTotals = MutableList(12) { 0f }
-        filteredBills.forEach {
-            val month = it.date.split("-")[1].toIntOrNull() ?: 1
-            if (month in 1..12) monthlyTotals[month - 1] += it.amount.toFloat()
-        }
-        return monthlyTotals
-    }
-
-    fun getPieChartDataForCategory(category: String, year: Int, month: Int, isIncome: Boolean): List<Pair<String, Float>> {
-        val filteredBills = _bills.filter {
-            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    billDate[1] == month &&
-                    it.category == category &&
-                    it.isIncome == isIncome
-        }
-        val totalAmount = filteredBills.sumOf { it.amount }
-        return filteredBills.map {
-            it.remarks to (it.amount / totalAmount * 100).toFloat()
-        }.sortedByDescending { it.second }
-    }
-
-    fun getYearlyTotalsForCategory(
-        category: String,
-        year: Int,
-        isIncome: Boolean
-    ): List<Float> {
-        // 按月份汇总指定类别的收入或支出
-        val monthlyTotals = MutableList(12) { 0f }
-
-        bills.filter { bill ->
-            val billDate = bill.date.split("-").mapNotNull { it.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    bill.category == category &&
-                    bill.isIncome == isIncome
-        }.forEach { bill ->
-            val month = bill.date.split("-")[1].toIntOrNull() ?: 1
-            if (month in 1..12) {
-                monthlyTotals[month - 1] += bill.amount.toFloat()
-            }
-        }
-
-        return monthlyTotals
-    }
-}
-
+@SuppressLint("UnrememberedMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartPage(
     navController: NavController,
-    viewModel: ChartViewModel = viewModel()
+    viewModel: BillViewModel = viewModel()
 ) {
     val months = listOf(
         "1월", "2월", "3월", "4월", "5월", "6월",
@@ -318,75 +106,32 @@ fun ChartPage(
     var selectedYear by remember { mutableStateOf(currentYear) } // 默认选中当前年份
     var selectedMonth by remember { mutableStateOf(months[currentMonth - 1]) } // 默认选中当前月份
 
-    //var selectedYear by remember { mutableStateOf<Int?>(null) }
-    //var selectedMonth by remember { mutableStateOf<String?>(null) } // 默认没有选择月份
-
     var selectedOption by remember { mutableStateOf("지출 차트") } // 动态标题内容
     var isDropdownExpanded by remember { mutableStateOf(false) } // 控制下拉框显示
-    /*
-        // 初始化默认值
-        LaunchedEffect(viewModel.isIncomeSelected) {
-            // 当收入/支出选项变化时，更新数据
-            if (isYearSelected) {
-                val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
-                dataPoints = yearData
-                xAxisLabels = generateXAxisLabelsForYear()
-            } else {
-                val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
-                dataPoints = monthData
-                xAxisLabels = generateXAxisLabels(monthData.size)
-            }
-        }
 
-     */
 
     LaunchedEffect(isYearSelected, selectedYear, selectedMonth) {
         if (isYearSelected) {
             // 按年份模式加载数据
             val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
-                selectedYear,
+                selectedYear?: currentYear,
                 viewModel.isIncomeSelected
             )
             barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
-            dataPoints = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
+            dataPoints = viewModel.getMonthlyIncomeExpenditure(selectedYear, viewModel.isIncomeSelected).map { it }
             xAxisLabels = generateXAxisLabelsForYear()
         } else {
             // 按月份模式加载数据
             val monthlyIndex = months.indexOf(selectedMonth) + 1 // 将月份转换为数字
             val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
-                selectedYear,
+                selectedYear?: currentYear,
                 monthlyIndex,
                 viewModel.isIncomeSelected
             )
             barChartData = monthlyData.map { (category, total) -> category to total.toFloat() }
-            dataPoints = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
+            dataPoints = viewModel.getDailyIncomeExpenditure(selectedYear, monthlyIndex,viewModel.isIncomeSelected).map { it }
             xAxisLabels = generateXAxisLabels(dataPoints.size)
         }
-    }
-    // 柱状图数据更新逻辑
-    LaunchedEffect(selectedYear, selectedMonth, isYearSelected) {
-        if (isYearSelected) {
-            // 按年份计算各类别的收入/支出
-            val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
-                selectedYear ?: currentYear, // 默认年份为当前年份
-                viewModel.isIncomeSelected
-            )
-            barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
-        } else {
-            // 按月份计算各类别的收入/支出
-            val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
-                selectedYear ?: currentYear, // 默认年份为当前年份
-                (months.indexOf(selectedMonth) + 1).takeIf { it > 0 } ?: currentMonth, // 获取月份索引（1-12）
-                viewModel.isIncomeSelected
-            )
-            barChartData = monthlyData.map { (category, total) -> category to total.toFloat() }
-        }
-    }
-
-    // 初始化默认值
-    LaunchedEffect(Unit) {
-        dataPoints = List(31) { 0.0 } // 空的折线图数据
-        xAxisLabels = generateXAxisLabels(dataPoints.size)
     }
 
     Scaffold(
@@ -431,9 +176,28 @@ fun ChartPage(
                             onClick = {
                                 // 更新逻辑为收入图表
                                 selectedOption = "지출 차트" // 更新标题
-                                viewModel.isIncomeSelected = true
-                                viewModel.updateData()  // 更新数据
-
+                                viewModel.isIncomeSelected = false
+                                if (isYearSelected) {
+                                    // 按年份模式加载数据
+                                    val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
+                                        selectedYear?: currentYear,
+                                        viewModel.isIncomeSelected
+                                    )
+                                    barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
+                                    dataPoints = viewModel.getMonthlyIncomeExpenditure(selectedYear, viewModel.isIncomeSelected).map { it }
+                                    xAxisLabels = generateXAxisLabelsForYear()
+                                } else {
+                                    // 按月份模式加载数据
+                                    val monthlyIndex = months.indexOf(selectedMonth) + 1 // 将月份转换为数字
+                                    val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
+                                        selectedYear?: currentYear,
+                                        monthlyIndex,
+                                        viewModel.isIncomeSelected
+                                    )
+                                    barChartData = monthlyData.map { (category, total) -> category to total.toFloat() }
+                                    dataPoints = viewModel.getDailyIncomeExpenditure(selectedYear, monthlyIndex,viewModel.isIncomeSelected).map { it }
+                                    xAxisLabels = generateXAxisLabels(dataPoints.size)
+                                }
                                 isDropdownExpanded = false
                             }
                         )
@@ -442,13 +206,34 @@ fun ChartPage(
                             onClick = {
                                 // 更新逻辑为支出图表
                                 selectedOption = "수입 차트" // 更新标题
-                                viewModel.isIncomeSelected = false
-                                viewModel.updateData()  // 更新数据
+                                viewModel.isIncomeSelected = true
+                                if (isYearSelected) {
+                                    // 按年份模式加载数据
+                                    val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
+                                        selectedYear?: currentYear,
+                                        viewModel.isIncomeSelected
+                                    )
+                                    barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
+                                    dataPoints = viewModel.getMonthlyIncomeExpenditure(selectedYear, viewModel.isIncomeSelected).map { it }
+                                    xAxisLabels = generateXAxisLabelsForYear()
+                                } else {
+                                    // 按月份模式加载数据
+                                    val monthlyIndex = months.indexOf(selectedMonth) + 1 // 将月份转换为数字
+                                    val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
+                                        selectedYear?: currentYear,
+                                        monthlyIndex,
+                                        viewModel.isIncomeSelected
+                                    )
+                                    barChartData = monthlyData.map { (category, total) -> category to total.toFloat() }
+                                    dataPoints = viewModel.getDailyIncomeExpenditure(selectedYear, monthlyIndex,viewModel.isIncomeSelected).map { it }
+                                    xAxisLabels = generateXAxisLabels(dataPoints.size)
+                                }
                                 isDropdownExpanded = false
                             }
                         )
                     }
-                }
+                },
+                modifier = Modifier.fillMaxWidth().shadow(8.dp)
             )
         }
     ) { innerPadding ->
@@ -460,24 +245,14 @@ fun ChartPage(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 时间选择器
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            //滚动视图到12月
             val yearListState = rememberLazyListState()
             val monthListState = rememberLazyListState()
 
-            // 通知选择更改
-            LaunchedEffect(selectedMonth, selectedYear) {
-                if (isYearSelected) {
-                    val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
-                    dataPoints = yearData
-                    xAxisLabels = generateXAxisLabelsForYear()
-                } else {
-                    val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
-                    dataPoints = monthData
-                    xAxisLabels = generateXAxisLabels(monthData.size)
-                }
-                selectedIndex = -1 // 重置选中状态
-            }
-
+            //滚动视图到12月
             LaunchedEffect(Unit) {
                 if (isYearSelected) {
                     yearListState.scrollToItem(years.indexOf(selectedYear))
@@ -510,7 +285,7 @@ fun ChartPage(
                     border = BorderStroke(1.dp, Color.Black)
                 ) {
                     Text(
-                        text = "당년   월별",
+                        text = "월별",
                         color = if (isYearSelected) Color.Black else Color.White
                     )
                 }
@@ -531,7 +306,7 @@ fun ChartPage(
                     border = BorderStroke(1.dp, Color.Black)
                 ) {
                     Text(
-                        text = "각년   월별",
+                        text = "년별",
                         color = if (isYearSelected) Color.White else Color.Black
                     )
                 }
@@ -564,11 +339,9 @@ fun ChartPage(
                 }
             }
 
-            // Line Chart分隔线
-            DividerWithText("Chart Table")
-
             // 折线图
             CustomLineChart(
+                isYearSelected = isYearSelected,
                 dataPoints = dataPoints.map { it.toFloat() },
                 xAxisLabels = xAxisLabels,
                 selectedIndex = selectedIndex,
@@ -578,6 +351,49 @@ fun ChartPage(
             )
 
             Spacer(modifier = Modifier.height(4.dp))
+
+            Row {
+                Text(
+                text = "순위",
+                modifier = Modifier.weight(1f), // 让这个文本靠左对齐
+                style = TextStyle(fontSize = 32.sp)
+            )
+                // 获取总和
+                val totalSum = dataPoints.sum().toInt()
+                // 获取平均值
+                val average = dataPoints.average().toInt()
+
+                Row {
+                    Column {
+                        Text(
+                            text = "총",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                        Text(
+                            text = "₩${totalSum}",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(40.dp))
+                    Column {
+                        Text(
+                            text = "평균",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                        Text(
+                            text = "₩${average}",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                    }
+                }
+
+            }
+
 
             // 横向柱状图
             HorizontalBarChartWithClick(
@@ -595,6 +411,7 @@ fun ChartPage(
 //折线图实现
 @Composable
 fun CustomLineChart(
+    isYearSelected : Boolean,
     dataPoints: List<Float>,
     xAxisLabels: List<String>,
     selectedIndex: Int,
@@ -706,16 +523,29 @@ fun CustomLineChart(
                 // 画选择的点
                 drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
                 // 显示选择的数据
-                drawContext.canvas.nativeCanvas.drawText(
-                    "${selectedIndex + 1} : ${dataPoints[selectedIndex].toInt()}",
+                if(isYearSelected){drawContext.canvas.nativeCanvas.drawText(
+                    "${selectedIndex + 1}월  ₩${dataPoints[selectedIndex].toInt()}",
                     x,
                     y - 16.dp.toPx(),
                     android.graphics.Paint().apply {
                         color = android.graphics.Color.BLACK
-                        textSize = 40f
+                        textSize = 46f
                         textAlign = android.graphics.Paint.Align.CENTER
                     }
                 )
+                } else {
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "${selectedIndex + 1}일  ₩${dataPoints[selectedIndex].toInt()}",
+                        x,
+                        y - 16.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 46f
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
+                    )
+                }
+
             }
         }
     }
@@ -740,12 +570,14 @@ fun HorizontalBarChartWithClick(
     maxValue: Float,                 // 数据中的最大值，用于计算比例
     modifier: Modifier = Modifier,
     onCategoryClick: (String) -> Unit, // 点击事件，传递类别名称
+    viewModel: BillViewModel = viewModel()
 ) {
+
     // 整体外框
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(500.dp) // 设置黑色框的固定高度
+            .height(375.dp) // 设置黑色框的固定高度
             //.background(Color.White)
             //.border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(10.dp))
             //.padding(8.dp)
@@ -758,56 +590,80 @@ fun HorizontalBarChartWithClick(
         // 使用 LazyColumn 实现滚动
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(data.sortedByDescending { it.second }) { (label, value) ->
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .padding(vertical = 12.dp)
                             .clickable { onCategoryClick(label) }, // 点击事件
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 显示标签
-                        Text(
-                            text = label,
-                            modifier = Modifier.weight(1f),
-                            color = Color.Black
-                        )
+                        // 显示图标
+                        val iconId = viewModel.incomeCategories.find { it.first == label }?.second
+                            ?: viewModel.expenditureCategories.find { it.first == label }?.second
 
-                        // 横向柱状条
-                        Box(
-                            modifier = Modifier
-                                .weight(4f)
-                                .height(20.dp)
-                                .background(Color.White) // 设置白色背景
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.White,
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-                        ) {
-                            Box(
+                        if (iconId != null) {
+                            Icon(
+                                painter = painterResource(id = iconId),
+                                contentDescription = label,
                                 modifier = Modifier
-                                    .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
-                                    .height(20.dp)
-                                    .background(Color.Black)
+                                    .size(44.dp) // 设置图标大小
+                                    .padding(end = 8.dp)
+                                    .offset(y = (4).dp),
+                                tint = Color.Unspecified // 使用原始颜色
                             )
                         }
-                    }
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                    // 数值显示在柱状图右上角
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Text(
-                            text = value.toInt().toString(),
-                            color = Color.Black,
-                            modifier = Modifier.padding(end = 8.dp, top = 4.dp)
-                        )
+                        // 第一行：左侧为标签，右侧为金额
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 百分比计算
+                                val totalValue = data.sumOf { it.second.toDouble() } // 总和
+                                val percentage = if (totalValue > 0) (value / totalValue * 100).toInt() else 0
+
+                                // 标签
+                                Text(
+                                    text = "${label}   ${percentage}%",
+                                    modifier = Modifier.weight(1f),
+                                    color = Color.Black,
+                                )
+
+
+                                // 金额
+                                Text(
+                                    text = value.toInt().toString(),
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    style = TextStyle(fontSize = 18.sp)
+                                )
+                            }
+
+                            // 第二行：柱状图
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(14.dp)
+                                    .background(Color.Transparent) // 设置透明背景
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(14.dp)) // 设置圆角，保证动态调整后两端为圆角
+                                        .background(Color.Black)
+                                )
+                            }
+                        }
                     }
                 }
+
             }
         }
     }
