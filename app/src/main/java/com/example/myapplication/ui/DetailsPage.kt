@@ -255,14 +255,11 @@ fun DetailsPage(
 
             // 柱状图
             //DividerWithText("-")
-            if (!isYearSelected) {
-                DividerWithText("Breakdown")
-                VerticalBarChartWithLabels(
-                    data = barChartData,
-                    maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
-                    onCategoryClick = { /*TODO*/ }
-                )
-            }
+            VerticalBarChartWithLabels(
+                data = barChartData,
+                maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
+                onCategoryClick = { /*TODO*/ }
+            )
         }
     }
 }
