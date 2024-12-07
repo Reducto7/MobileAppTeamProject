@@ -403,7 +403,7 @@ fun ChartPage(
 //折线图实现
 @Composable
 fun CustomLineChart(
-    isYearSelected : Boolean,
+    isYearSelected: Boolean,
     dataPoints: List<Float>,
     xAxisLabels: List<String>,
     selectedIndex: Int,
@@ -418,130 +418,152 @@ fun CustomLineChart(
             .padding(4.dp) // 内边距，给折线图留出绘制空间
             .height(150.dp) // 设置卡片内容高度，确保横坐标有足够空间
     ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(dataPoints) { // 监听 dataPoints 的变化，重新计算点击逻辑
-                    detectTapGestures { offset ->
-                        val nearestIndex = dataPoints.indices.minByOrNull { index ->
-                            val x = (index / maxX.toFloat()) * size.width
-                            kotlin.math.abs(offset.x - x)
-                        } ?: -1
+        // 判断数据是否为空（包括所有数据为零）
 
-                        if (nearestIndex in dataPoints.indices) {
-                            onSelectedIndexChanged(nearestIndex)
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(dataPoints) { // 监听 dataPoints 的变化，重新计算点击逻辑
+                        detectTapGestures { offset ->
+                            val nearestIndex = dataPoints.indices.minByOrNull { index ->
+                                val x = (index / maxX.toFloat()) * size.width
+                                kotlin.math.abs(offset.x - x)
+                            } ?: -1
+
+                            if (nearestIndex in dataPoints.indices) {
+                                onSelectedIndexChanged(nearestIndex)
+                            }
                         }
                     }
+            ) {
+                // 计算横坐标需要的额外高度
+                val xAxisPadding = 40.dp.toPx()
+
+                // 绘制网格线
+                val averageValue =
+                    if (dataPoints.isNotEmpty()) dataPoints.average().toFloat() else 0f
+                val averageY =
+                    size.height - xAxisPadding - ((averageValue - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+
+                // 零刻度线
+                drawLine(
+                    color = Color.Gray,
+                    start = Offset(0f, size.height - xAxisPadding),
+                    end = Offset(size.width, size.height - xAxisPadding),
+                    strokeWidth = 1.dp.toPx()
+                )
+
+                // 平均值线（灰色虚线）
+                drawLine(
+                    color = Color.Gray,
+                    start = Offset(0f, averageY),
+                    end = Offset(size.width, averageY),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)
+                )
+
+                if (dataPoints.all { it == 0f }) {
+                    val paint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.GRAY
+                        textSize = 72f
+                        textAlign = android.graphics.Paint.Align.CENTER
+                        typeface = android.graphics.Typeface.DEFAULT_BOLD // 设置为粗体
+                    }
+                    // 计算居中位置
+                    val x = size.width / 2
+                    val y = (size.height - 100f) / 2
+
+                    // 在 Canvas 上绘制“没有数据”文字
+                    drawContext.canvas.nativeCanvas.drawText("데이터 없음", x, y, paint)
                 }
-        ) {
-            // 计算横坐标需要的额外高度
-            val xAxisPadding = 40.dp.toPx()
 
-            // 绘制网格线
-            val averageValue = if (dataPoints.isNotEmpty()) dataPoints.average().toFloat() else 0f
-            val averageY =
-                size.height - xAxisPadding - ((averageValue - minY) / (maxY - minY)) * (size.height - xAxisPadding)
 
-            // 零刻度线
-            drawLine(
-                color = Color.Gray,
-                start = Offset(0f, size.height - xAxisPadding),
-                end = Offset(size.width, size.height - xAxisPadding),
-                strokeWidth = 1.dp.toPx()
-            )
+                // 绘制折线图
+                val path = Path().apply {
+                    dataPoints.forEachIndexed { index, value ->
+                        val x = (index / maxX.toFloat()) * size.width
+                        val y = size.height - xAxisPadding - ((value - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+                        if (index == 0) moveTo(x, y) else lineTo(x, y)
+                    }
+                }
+                drawPath(
+                    path = path,
+                    color = Color.Black,
+                    style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
 
-            // 平均值线（灰色虚线）
-            drawLine(
-                color = Color.Gray,
-                start = Offset(0f, averageY),
-                end = Offset(size.width, averageY),
-                strokeWidth = 1.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 20f), 0f)
-            )
+                // 绘制横坐标
+                xAxisLabels.forEachIndexed { index, label ->
+                    if (label.isNotEmpty()) { // 仅绘制非空标签
+                        val x = (index.toFloat() / maxX) * size.width
+                        drawContext.canvas.nativeCanvas.drawText(
+                            label,
+                            x,
+                            size.height - 10.dp.toPx(), // 确保标签位于 Canvas 的底部
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 40f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    }
+                }
 
-            // 绘制折线图
-            val path = Path().apply {
+                // 绘制所有点
                 dataPoints.forEachIndexed { index, value ->
                     val x = (index / maxX.toFloat()) * size.width
                     val y = size.height - xAxisPadding - ((value - minY) / (maxY - minY)) * (size.height - xAxisPadding)
-                    if (index == 0) moveTo(x, y) else lineTo(x, y)
-                }
-            }
-            drawPath(
-                path = path,
-                color = Color.Black,
-                style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
 
-            // 绘制横坐标
-            xAxisLabels.forEachIndexed { index, label ->
-                if (label.isNotEmpty()) { // 仅绘制非空标签
-                    val x = (index.toFloat() / maxX) * size.width
-                    drawContext.canvas.nativeCanvas.drawText(
-                        label,
-                        x,
-                        size.height - 10.dp.toPx(), // 确保标签位于 Canvas 的底部
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.BLACK
-                            textSize = 40f
-                            textAlign = android.graphics.Paint.Align.CENTER
-                        }
+                    drawCircle(
+                        color = Color.Black,
+                        radius = 2.dp.toPx(),
+                        center = Offset(x, y)
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = 1.dp.toPx(),
+                        center = Offset(x, y)
                     )
                 }
-            }
 
-            // 绘制所有点
-            dataPoints.forEachIndexed { index, value ->
-                val x = (index / maxX.toFloat()) * size.width
-                val y = size.height - xAxisPadding - ((value - minY) / (maxY - minY)) * (size.height - xAxisPadding)
-
-                drawCircle(
-                    color = Color.Black,
-                    radius = 2.dp.toPx(),
-                    center = Offset(x, y)
-                )
-                drawCircle(
-                    color = Color.White,
-                    radius = 1.dp.toPx(),
-                    center = Offset(x, y)
-                )
-            }
-
-            // 绘制选中点
-            if (selectedIndex >= 0 && selectedIndex < dataPoints.size) {
-                val x = (selectedIndex / maxX.toFloat()) * size.width
-                val y =
-                    size.height - xAxisPadding - ((dataPoints[selectedIndex] - minY) / (maxY - minY)) * (size.height - xAxisPadding)
-                // 画选择的点
-                drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
-                // 显示选择的数据
-                if(isYearSelected){drawContext.canvas.nativeCanvas.drawText(
-                    "${selectedIndex + 1}월  ₩${dataPoints[selectedIndex].toInt()}",
-                    x,
-                    y - 16.dp.toPx(),
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.BLACK
-                        textSize = 46f
-                        textAlign = android.graphics.Paint.Align.CENTER
+                // 绘制选中点
+                if (selectedIndex >= 0 && selectedIndex < dataPoints.size) {
+                    val x = (selectedIndex / maxX.toFloat()) * size.width
+                    val y =
+                        size.height - xAxisPadding - ((dataPoints[selectedIndex] - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+                    // 画选择的点
+                    drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
+                    // 显示选择的数据
+                    if (isYearSelected) {
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "${selectedIndex + 1}월  ₩${dataPoints[selectedIndex].toInt()}",
+                            x,
+                            y - 16.dp.toPx(),
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 46f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    } else {
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "${selectedIndex + 1}일  ₩${dataPoints[selectedIndex].toInt()}",
+                            x,
+                            y - 16.dp.toPx(),
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 46f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
                     }
-                )
-                } else {
-                    drawContext.canvas.nativeCanvas.drawText(
-                        "${selectedIndex + 1}일  ₩${dataPoints[selectedIndex].toInt()}",
-                        x,
-                        y - 16.dp.toPx(),
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.BLACK
-                            textSize = 46f
-                            textAlign = android.graphics.Paint.Align.CENTER
-                        }
-                    )
                 }
-
             }
-        }
+
     }
 }
+
+
 
 fun generateXAxisLabels(dataSize: Int): List<String> {
     // 指定要显示标签的索引
@@ -570,94 +592,103 @@ fun HorizontalBarChartWithClick(
         modifier = Modifier
             .fillMaxWidth()
             .height(375.dp) // 设置黑色框的固定高度
-            //.background(Color.White)
-            //.border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(10.dp))
-            //.padding(8.dp)
             .pointerInput(Unit) { // 增加鼠标滚动支持
                 detectTransformGestures { _, _, zoom, _ ->
                     // 支持鼠标滚动的相关逻辑
                 }
             }
     ) {
-        // 使用 LazyColumn 实现滚动
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            items(data.sortedByDescending { it.second }) { (label, value) ->
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp)
-                            .clickable { onCategoryClick(label) }, // 点击事件
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 显示图标
-                        val iconId = viewModel.incomeCategories.find { it.first == label }?.second
-                            ?: viewModel.expenditureCategories.find { it.first == label }?.second
+        if (data.isEmpty()) {
+            // 如果数据为空，显示“没有数据”文本
+            Text(
+                text = "데이터 없음",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp).offset(y = (-64).dp),
+                color = Color.Gray,
+                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            )
+        } else {
+            // 使用 LazyColumn 实现滚动
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(data.sortedByDescending { it.second }) { (label, value) ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp)
+                                .clickable { onCategoryClick(label) }, // 点击事件
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 显示图标
+                            val iconId = viewModel.incomeCategories.find { it.first == label }?.second
+                                ?: viewModel.expenditureCategories.find { it.first == label }?.second
 
-                        if (iconId != null) {
-                            Icon(
-                                painter = painterResource(id = iconId),
-                                contentDescription = label,
-                                modifier = Modifier
-                                    .size(44.dp) // 设置图标大小
-                                    .padding(end = 8.dp)
-                                    .offset(y = (4).dp),
-                                tint = Color.Unspecified // 使用原始颜色
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // 第一行：左侧为标签，右侧为金额
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // 百分比计算
-                                val totalValue = data.sumOf { it.second.toDouble() } // 总和
-                                val percentage = if (totalValue > 0) (value / totalValue * 100).toInt() else 0
-
-                                // 标签
-                                Text(
-                                    text = "${label}   ${percentage}%",
-                                    modifier = Modifier.weight(1f),
-                                    color = Color.Black,
-                                )
-
-
-                                // 金额
-                                Text(
-                                    text = value.toInt().toString(),
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    style = TextStyle(fontSize = 18.sp)
+                            if (iconId != null) {
+                                Icon(
+                                    painter = painterResource(id = iconId),
+                                    contentDescription = label,
+                                    modifier = Modifier
+                                        .size(44.dp) // 设置图标大小
+                                        .padding(end = 8.dp)
+                                        .offset(y = (4).dp),
+                                    tint = Color.Unspecified // 使用原始颜色
                                 )
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                            // 第二行：柱状图
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(14.dp)
-                                    .background(Color.Transparent) // 设置透明背景
-                            ) {
+                            // 第一行：左侧为标签，右侧为金额
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 百分比计算
+                                    val totalValue = data.sumOf { it.second.toDouble() } // 总和
+                                    val percentage = if (totalValue > 0) (value / totalValue * 100).toInt() else 0
+
+                                    // 标签
+                                    Text(
+                                        text = "${label}   ${percentage}%",
+                                        modifier = Modifier.weight(1f),
+                                        color = Color.Black,
+                                    )
+
+
+                                    // 金额
+                                    Text(
+                                        text = value.toInt().toString(),
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(end = 8.dp),
+                                        style = TextStyle(fontSize = 18.sp)
+                                    )
+                                }
+
+                                // 第二行：柱状图
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(14.dp)) // 设置圆角，保证动态调整后两端为圆角
-                                        .background(Color.Black)
-                                )
+                                        .fillMaxWidth()
+                                        .height(14.dp)
+                                        .background(Color.Transparent) // 设置透明背景
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
+                                            .fillMaxHeight()
+                                            .clip(RoundedCornerShape(14.dp)) // 设置圆角，保证动态调整后两端为圆角
+                                            .background(Color.Black)
+                                    )
+                                }
                             }
                         }
                     }
                 }
-
             }
         }
     }
 }
+
 
