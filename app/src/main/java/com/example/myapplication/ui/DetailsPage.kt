@@ -258,7 +258,7 @@ fun DetailsPage(
             VerticalBarChartWithLabels(
                 data = barChartData,
                 maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
-                onCategoryClick = { /*TODO*/ }
+                category = category
             )
         }
     }
@@ -270,7 +270,7 @@ fun DetailsPage(
 fun VerticalBarChartWithLabels(
     data: List<Pair<String, Float>>, // 数据：备注字段和金额
     maxValue: Float,                 // 最大值：用于确定横轴比例
-    onCategoryClick: (String) -> Unit, // 点击事件，传递类别名称
+    category: String,                // 传递类别名称
     viewModel: BillViewModel = viewModel() // 账单数据视图模型
 ) {
     // 整体外框
@@ -295,13 +295,13 @@ fun VerticalBarChartWithLabels(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp)
-                            .clickable { onCategoryClick(label) }, // 点击事件
+                            .padding(vertical = 12.dp),
+                            //.clickable { onCategoryClick(label) }, // 点击事件
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // 显示图标
-                        val iconId = viewModel.incomeCategories.find { it.first == label }?.second
-                            ?: viewModel.expenditureCategories.find { it.first == label }?.second
+                        val iconId = viewModel.incomeCategories.find { it.first == category }?.second
+                            ?: viewModel.expenditureCategories.find { it.first == category }?.second
 
                         if (iconId != null) {
                             Icon(
