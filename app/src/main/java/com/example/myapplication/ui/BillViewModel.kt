@@ -3,7 +3,6 @@ package com.example.myapplication.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.myapplication.R
@@ -264,7 +263,7 @@ class BillViewModel : ViewModel() {
         return monthlyTotals
     }
 
-    //计算某年的各类别收入和支出year: Int, month: Int, isIncome: Boolean
+    //计算某年的各类别收入或支出year: Int, month: Int, isIncome: Boolean
     fun getYearlyCategoryIncomeExpenditure(year: Int, isIncome: Boolean): Map<String, Double> {
         return _bills
             .filter {
@@ -275,7 +274,7 @@ class BillViewModel : ViewModel() {
             .mapValues { (_, bills) -> bills.sumOf { it.amount } }
     }
 
-    //计算某年某月的各类别收入和支出
+    //计算某年某月的各类别收入或支出
     fun getMonthlyCategoryIncomeExpenditure(year: Int, month: Int, isIncome: Boolean): Map<String, Double> {
         return _bills
             .filter {
@@ -293,17 +292,9 @@ class BillViewModel : ViewModel() {
         return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
     }
 
-    //详情分析页面
-    fun getBillsForCategory(category: String, year: Int, month: Int?): List<Bill> {
-        return _bills.filter {
-            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    billDate[1] == month &&
-                    it.category == category
-        }
-    }
 
+//详情分析页面
+    // 获取某年每月的总和（某年某类型）
     fun getMonthlyTotalsForCategory(category: String, year: Int, isIncome: Boolean): List<Float> {
         val filteredBills = _bills.filter {
             val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
@@ -312,15 +303,20 @@ class BillViewModel : ViewModel() {
                     it.category == category &&
                     it.isIncome == isIncome
         }
-        val monthlyTotals = MutableList(12) { 0f }
+
+        val monthlyTotals = MutableList(12) { 0.0 }
+
         filteredBills.forEach {
             val month = it.date.split("-")[1].toIntOrNull() ?: 1
-            if (month in 1..12) monthlyTotals[month - 1] += it.amount.toFloat()
+            if (month in 1..12) monthlyTotals[month - 1] += it.amount
         }
-        return monthlyTotals
+
+        return monthlyTotals.map { it.toFloat() }
     }
 
-    fun getPieChartDataForCategory(category: String, year: Int, month: Int, isIncome: Boolean): List<Pair<String, Float>> {
+    // 获取某年某月每天的总和（某类型）
+    fun getDailyCategoryTotals(year: Int, month: Int, category: String, isIncome: Boolean): List<Double> {
+        // 筛选出符合条件的账单（指定年份、月份、类型和收入/支出状态）
         val filteredBills = _bills.filter {
             val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
             billDate.size == 3 &&
@@ -329,34 +325,49 @@ class BillViewModel : ViewModel() {
                     it.category == category &&
                     it.isIncome == isIncome
         }
-        val totalAmount = filteredBills.sumOf { it.amount }
-        return filteredBills.map {
-            it.remarks to (it.amount / totalAmount * 100).toFloat()
-        }.sortedByDescending { it.second }
-    }
 
-    fun getYearlyTotalsForCategory(
-        category: String,
-        year: Int,
-        isIncome: Boolean
-    ): List<Float> {
-        // 按月份汇总指定类别的收入或支出
-        val monthlyTotals = MutableList(12) { 0f }
+        // 动态计算当前月份的天数
+        val daysInMonth = when (month) {
+            2 -> if (isLeapYear(year)) 29 else 28
+            4, 6, 9, 11 -> 30
+            else -> 31
+        }
 
-        bills.filter { bill ->
-            val billDate = bill.date.split("-").mapNotNull { it.toIntOrNull() }
-            billDate.size == 3 &&
-                    billDate[0] == year &&
-                    bill.category == category &&
-                    bill.isIncome == isIncome
-        }.forEach { bill ->
-            val month = bill.date.split("-")[1].toIntOrNull() ?: 1
-            if (month in 1..12) {
-                monthlyTotals[month - 1] += bill.amount.toFloat()
+        // 初始化每天的总金额列表
+        val dailyTotals = MutableList(daysInMonth) { 0.0 }
+
+        // 累计每一天的金额
+        filteredBills.forEach {
+            val day = it.date.split("-")[2].toIntOrNull() ?: 1
+            if (day in 1..daysInMonth) {
+                dailyTotals[day - 1] += it.amount
             }
         }
 
-        return monthlyTotals
+        return dailyTotals
     }
 
+ //详情页面柱状图
+    // 获取每年的账单列表（某类型）
+    fun getBillsForYearCategory(category: String, year: Int, isIncome: Boolean): List<Bill> {
+        return _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    it.category == category &&
+                    it.isIncome == isIncome
+        }
+    }
+
+    // 获取某年某月的详细数据
+    fun getBillsForCategory(category: String, year: Int, month: Int, isIncome: Boolean): List<Bill> {
+        return _bills.filter {
+            val billDate = it.date.split("-").map { part -> part.toIntOrNull() }
+            billDate.size == 3 &&
+                    billDate[0] == year &&
+                    billDate[1] == month &&
+                    it.category == category&&
+                    it.isIncome == isIncome
+        }
+    }
 }

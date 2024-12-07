@@ -52,9 +52,10 @@ class MainActivity : ComponentActivity() {
                     composable("chart") {
                         ChartPage(navController = navController, viewModel = viewModel)
                     }
-                    composable("details/{category}") { backStackEntry ->
-                        val category = backStackEntry.arguments?.getString("category") ?: "Unknown"
-                        DetailsPage(navController = navController, category = category, viewModel = viewModel)
+                    composable("details/{category}/{isIncome}") { backStackEntry ->
+                        val category = backStackEntry.arguments?.getString("category") ?: ""
+                        val isIncome = backStackEntry.arguments?.getString("isIncome")?.toBoolean() ?: false
+                        DetailsPage(navController = navController, category = category, isIncome = isIncome, viewModel = viewModel)
                     }
                     composable("editBill/{billId}") { backStackEntry ->
                         val billId = backStackEntry.arguments?.getString("billId")?.toIntOrNull()

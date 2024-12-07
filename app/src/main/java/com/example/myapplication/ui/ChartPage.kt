@@ -63,17 +63,8 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.myapplication.R
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import java.net.URLEncoder
 import java.util.Calendar
 
@@ -399,8 +390,9 @@ fun ChartPage(
             HorizontalBarChartWithClick(
                 data = barChartData,
                 maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
-                onCategoryClick = {category ->
-                    navController.navigate("details/${URLEncoder.encode(category, "UTF-8")}")
+                onCategoryClick = { category ->
+                    val isIncome = viewModel.isIncomeSelected
+                    navController.navigate("details/${URLEncoder.encode(category, "UTF-8")}/$isIncome")
                 }
             )
         }

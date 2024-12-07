@@ -15,7 +15,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,72 +27,114 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import java.net.URLEncoder
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailsPage(
-    navController: NavController,
+    navController: NavHostController,
     category: String,
-    viewModel: ChartViewModel
+    isIncome: Boolean,
+    viewModel: BillViewModel = viewModel()
 ) {
     val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     val currentMonth = Calendar.getInstance().get(Calendar.MONTH) + 1
 
     var selectedYear by remember { mutableStateOf(currentYear) }
     var selectedMonth by remember { mutableStateOf(currentMonth) }
-    var isMonthlyView by remember { mutableStateOf(true) } // 默认为月视图
+    var isYearSelected by remember { mutableStateOf(false) } // 控制年份或月份模式
     var sortByAmount by remember { mutableStateOf(true) } // 默认按金额排序
+
+    // 滚动状态
+    val yearListState = rememberLazyListState()
+    val monthListState = rememberLazyListState()
 
     var lineChartData by remember { mutableStateOf(emptyList<Float>()) }
     var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
-    var pieChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
+
+    // 根据年份和月份获取当前月份的天数
+    fun getDaysInMonth(year: Int, month: Int): Int {
+        return when (month) {
+            2 -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28
+            4, 6, 9, 11 -> 30
+            else -> 31
+        }
+    }
+
+    val daysInMonth = getDaysInMonth(selectedYear, selectedMonth)
 
     // 更新数据
-    LaunchedEffect(selectedYear, selectedMonth, sortByAmount) {
-        val bills = viewModel.getBillsForCategory(category, selectedYear, selectedMonth)
-
-        lineChartData = viewModel.getMonthlyTotalsForCategory(category, selectedYear, viewModel.isIncomeSelected)
-
-        barChartData = if (sortByAmount) {
-            bills.sortedByDescending { it.amount }
+    LaunchedEffect(selectedYear, selectedMonth, isYearSelected, sortByAmount) {
+        if (isYearSelected) {
+            // 点击年份：显示每个月的金额总和
+            lineChartData = viewModel.getMonthlyTotalsForCategory(category, selectedYear, isIncome)
+            val bills = viewModel.getBillsForYearCategory(category, selectedYear, isIncome)
+            println("Selected Year: $selectedYear, Bills: $bills")
+            // 如果账单不为空，生成柱状图数据
+            barChartData = if (bills.isNotEmpty()) {
+                if (sortByAmount) {
+                    bills.sortedByDescending { it.amount }
+                } else {
+                    bills.sortedBy { it.date }
+                }.map { it.remarks to it.amount.toFloat() }
+            } else {
+                emptyList() // 如果账单为空，设置为空数据
+            }
+            println("BarChartData: $barChartData")
         } else {
-            bills.sortedBy { it.date }
-        }.map { it.remarks to it.amount.toFloat() }
+            // 点击月份：显示每天的金额总和
+            lineChartData =
+                viewModel.getDailyCategoryTotals(selectedYear, selectedMonth, category, isIncome)
+                    .take(getDaysInMonth(selectedYear, selectedMonth))
+                    .map { it.toFloat() }
+            val bills = viewModel.getBillsForCategory(category, selectedYear, selectedMonth, isIncome)
 
-        pieChartData = viewModel.getPieChartDataForCategory(category, selectedYear, selectedMonth, viewModel.isIncomeSelected)
+            // 如果账单不为空，生成柱状图数据
+            barChartData = if (bills.isNotEmpty()) {
+                if (sortByAmount) {
+                    bills.sortedByDescending { it.amount }
+                } else {
+                    bills.sortedBy { it.date }
+                }.map { it.remarks to it.amount.toFloat() }
+            } else {
+                emptyList() // 如果账单为空，设置为空数据
+            }
+        }
+    }
+
+
+    // 滚动到当前年份或月份
+    LaunchedEffect(Unit) {
+        if (isYearSelected) {
+            yearListState.scrollToItem(currentYear - 2020) // 假设年份范围是 2020 到当前年
+        } else {
+            monthListState.scrollToItem(currentMonth - 1)
+        }
     }
 
 
@@ -123,47 +164,79 @@ fun DetailsPage(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 32.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    onClick = { isMonthlyView = true },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isMonthlyView) Color.Black else Color.White,
-                        contentColor = if (isMonthlyView) Color.White else Color.Black
+                    onClick = { isYearSelected = false },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isYearSelected) Color.White else Color.Black,
+                        contentColor = if (isYearSelected) Color.Black else Color.White
                     ),
-                    shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(
-                            BorderStroke(1.dp, Color.Black),
-                            shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
-                        )
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(topStart = 32.dp, bottomStart = 32.dp),
+                    border = BorderStroke(1.dp, Color.Black)
                 ) {
-                    Text("Month")
+                    Text(
+                        text = "월별",
+                        color = if (isYearSelected) Color.Black else Color.White
+                    )
                 }
                 Button(
-                    onClick = { isMonthlyView = false },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (!isMonthlyView) Color.Black else Color.White,
-                        contentColor = if (!isMonthlyView) Color.White else Color.Black
+                    onClick = { isYearSelected = true },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isYearSelected) Color.Black else Color.White,
+                        contentColor = if (isYearSelected) Color.White else Color.Black
                     ),
-                    shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(
-                            BorderStroke(1.dp, Color.Black),
-                            shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
-                        )
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp),
+                    border = BorderStroke(1.dp, Color.Black)
                 ) {
-                    Text("Year")
+                    Text(
+                        text = "년별",
+                        color = if (isYearSelected) Color.White else Color.Black
+                    )
+                }
+            }
+            // 显示年份或月份列表
+            if (isYearSelected) {
+                LazyRow(state = yearListState) {
+                    items((2020..currentYear).toList()) { year ->
+                        Text(
+                            text = year.toString(),
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .clickable { selectedYear = year },
+                            color = if (selectedYear == year) Color.Black else Color.Gray
+                        )
+                    }
+                }
+            } else {
+                LazyRow(state = monthListState) {
+                    items((1..12).toList()) { month ->
+                        Text(
+                            text = "${month}월",
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .clickable { selectedMonth = month },
+                            color = if (selectedMonth == month) Color.Black else Color.Gray
+                        )
+                    }
                 }
             }
 
-            // 折线图
-            DividerWithText("Trend")
-            CustomLineChartWithAxis(dataPoints = lineChartData)
 
+            // 折线图
+            //DividerWithText("-")
+            CustomLineChart(
+                isYearSelected = isYearSelected,
+                dataPoints = lineChartData,
+                xAxisLabels = if (isYearSelected) generateXAxisLabelsForYear() else generateXAxisLabels(
+                    daysInMonth
+                ),
+                selectedIndex = -1,
+                onSelectedIndexChanged = {}
+            )
             // 排序切换按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -172,35 +245,122 @@ fun DetailsPage(
                 TextButton(onClick = { sortByAmount = true }) {
                     Text("Sort by Amount", color = if (sortByAmount) Color.Black else Color.Gray)
                 }
+                TextButton(onClick = { /*TODO*/ }) {
+                    Text("/")
+                }
                 TextButton(onClick = { sortByAmount = false }) {
                     Text("Sort by Date", color = if (!sortByAmount) Color.Black else Color.Gray)
                 }
             }
 
             // 柱状图
-            DividerWithText("Breakdown")
-            HorizontalBarChart(
-                data = barChartData,
-                maxValue = barChartData.maxOfOrNull { it.second } ?: 1f
-            )
+            //DividerWithText("-")
+            if (!isYearSelected) {
+                DividerWithText("Breakdown")
+                VerticalBarChartWithLabels(
+                    data = barChartData,
+                    maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
+                    onCategoryClick = { /*TODO*/ }
+                )
+                    }
+            }
+        }
+    }
 
-            // 饼图
-            DividerWithText("Distribution")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                PieChart(data = pieChartData)
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(pieChartData.sortedByDescending { it.second }) { (label, value) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(label, modifier = Modifier.weight(1f))
-                            Text("${value.toInt()}%")
+
+//
+@Composable
+fun VerticalBarChartWithLabels(
+    data: List<Pair<String, Float>>, // 数据：备注字段和金额
+    maxValue: Float,                 // 最大值：用于确定横轴比例
+    onCategoryClick: (String) -> Unit, // 点击事件，传递类别名称
+    viewModel: BillViewModel = viewModel() // 账单数据视图模型
+) {
+    // 整体外框
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(375.dp) // 设置黑色框的固定高度
+            .pointerInput(Unit) { // 增加鼠标滚动支持
+                detectTransformGestures { _, _, _, _ ->
+                    // 支持鼠标滚动的相关逻辑（此处留空）
+                }
+            }
+    ) {
+        // 使用 LazyColumn 实现滚动
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // 遍历数据并绘制每一项
+            items(data.sortedByDescending { it.second }) { (label, value) ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
+                            .clickable { onCategoryClick(label) }, // 点击事件
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 显示图标
+                        val iconId = viewModel.incomeCategories.find { it.first == label }?.second
+                            ?: viewModel.expenditureCategories.find { it.first == label }?.second
+
+                        if (iconId != null) {
+                            Icon(
+                                painter = painterResource(id = iconId),
+                                contentDescription = label,
+                                modifier = Modifier
+                                    .size(44.dp) // 设置图标大小
+                                    .padding(end = 8.dp)
+                                    .offset(y = 4.dp),
+                                tint = Color.Unspecified // 使用原始颜色
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // 第一行：左侧为标签，右侧为金额
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 百分比计算
+                                val totalValue = data.sumOf { it.second.toDouble() } // 总和
+                                val percentage =
+                                    if (totalValue > 0) (value / totalValue * 100).toInt() else 0
+
+                                // 标签
+                                Text(
+                                    text = "$label   ${percentage}%",
+                                    modifier = Modifier.weight(1f),
+                                    color = Color.Black,
+                                )
+
+                                // 金额
+                                Text(
+                                    text = "₩${value.toInt()}",
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
+                            // 第二行：柱状图
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(14.dp)
+                                    .background(Color.Transparent) // 设置透明背景
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(14.dp)) // 设置圆角，保证动态调整后两端为圆角
+                                        .background(Color.Black)
+                                )
+                            }
                         }
                     }
                 }
@@ -208,179 +368,60 @@ fun DetailsPage(
         }
     }
 }
+
+
 /*
-@Composable
-fun <T> DropdownMenuBox(label: String, items: List<T>, selectedItem: T, onItemSelected: (T) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(
-            onClick = { expanded = true },
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, Color.Black)
-        ) {
-            Text("$label: $selectedItem")
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            items.forEach {
-                DropdownMenuItem(onClick = {
-                    onItemSelected(it)
-                    expanded = false
-                }, text = { Text(it.toString()) })
-            }
-        }
-    }
-}
- */
-
-//折线图组件
-@Composable
-fun CustomLineChartWithAxis(dataPoints: List<Float>) {
-    val maxValue = dataPoints.maxOrNull() ?: 1f
-    val tickInterval = 1000 // x 轴刻度间隔
-
-    Canvas(modifier = Modifier
-        .fillMaxWidth()
-        .height(150.dp)) {
-        val spacing = size.width / (dataPoints.size - 1)
-        val maxHeight = size.height
-
-        // 绘制 x 轴
-        drawLine(
-            color = Color.Black,
-            start = Offset(0f, maxHeight),
-            end = Offset(size.width, maxHeight),
-            strokeWidth = 2f
-        )
-        // 绘制 x 轴刻度
-        val tickCount = (maxValue / tickInterval).toInt()
-        for (i in 0..tickCount) {
-            val x = spacing * i
-            drawLine(
-                color = Color.Black,
-                start = Offset(x, maxHeight),
-                end = Offset(x, maxHeight + 10f),
-                strokeWidth = 2f
-            )
-            // 显示刻度值
-            drawContext.canvas.nativeCanvas.drawText(
-                "${i * tickInterval}",
-                x,
-                maxHeight + 30f,
-                android.graphics.Paint().apply {
-                    color = android.graphics.Color.BLACK
-                    textSize = 24f
-                }
-            )
-        }
-
-        // 绘制折线
-        dataPoints.forEachIndexed { index, value ->
-            if (index < dataPoints.size - 1) {
-                val x1 = spacing * index
-                val y1 = maxHeight - (value / maxValue * maxHeight)
-                val x2 = spacing * (index + 1)
-                val y2 = maxHeight - (dataPoints[index + 1] / maxValue * maxHeight)
-
-                drawLine(
-                    color = Color.Black,
-                    start = Offset(x1, y1),
-                    end = Offset(x2, y2),
-                    strokeWidth = 4f
-                )
-            }
-        }
-    }
-}
-
-
-//柱状图
-@Composable
-fun HorizontalBarChart(
-    data: List<Pair<String, Float>>,
-    maxValue: Float
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    @Composable
+    fun VerticalBarChartWithLabels(
+        data: List<Pair<String, Float>>, // 数据：备注字段和金额
+        maxValue: Float,                  // 最大值：用于确定横轴比例
+        viewModel: BillViewModel = viewModel() // 账单数据视图模型
     ) {
-        data.sortedByDescending { it.second }.forEach { (label, value) ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Box(
-                    modifier = Modifier
-                        .weight(4f)
-                        .height(20.dp)
-                        .background(Color.White)
-                        .border(1.dp, Color.Black, RoundedCornerShape(10.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp) // 间距
+        ) {
+            data.forEach { (label, value) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // 左侧显示备注字段
+                    Text(
+                        text = label,
+                        modifier = Modifier.weight(1f), // 分配权重，靠左显示
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    // 右侧柱状图
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(fraction = value / maxValue)
-                            .height(20.dp)
-                            .background(Color.Black)
+                            .weight(4f) // 分配权重，用于绘制柱状图
+                            .height(20.dp) // 柱状高度
+                            .background(Color.White) // 背景为白色
+                            .border(1.dp, Color.Black, RoundedCornerShape(10.dp)) // 边框样式
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = value / maxValue) // 按比例填充宽度
+                                .fillMaxHeight() // 填满高度
+                                .background(Color.Black) // 柱状图颜色
+                                .clip(RoundedCornerShape(10.dp)) // 圆角样式
+                        )
+                    }
+
+                    // 显示金额
+                    Text(
+                        text = "₩${value.toInt()}",
+                        modifier = Modifier.padding(start = 8.dp), // 与柱状图间隔
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
         }
     }
-}
 
 
-//饼状图组件
-@Composable
-fun PieChart(data: List<Pair<String, Float>>) {
-    val total = data.map { it.second }.sum()
-    val angles = data.map { it.second / total * 360f }
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp)
-    ) {
-        var startAngle = 0f
-
-        val centerX = size.width / 2f
-        val centerY = size.height / 2f
-        val radius = size.minDimension / 2f
-
-        angles.forEachIndexed { index, sweepAngle ->
-            // 绘制扇形
-            drawArc(
-                color = Color(0xFF000000 + (0xFFFFFF / data.size * index).toInt()),
-                startAngle = startAngle,
-                sweepAngle = sweepAngle,
-                useCenter = true,
-                topLeft = Offset(centerX - radius, centerY - radius),
-                size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f)
-            )
-
-            // 计算数值显示位置
-            val angle = Math.toRadians((startAngle + sweepAngle / 2).toDouble())
-            val x = (centerX + radius / 1.5 * kotlin.math.cos(angle)).toFloat()
-            val y = (centerY + radius / 1.5 * kotlin.math.sin(angle)).toFloat()
-
-            drawContext.canvas.nativeCanvas.drawText(
-                "${data[index].second.toInt()}",
-                x,
-                y,
-                android.graphics.Paint().apply {
-                    color = android.graphics.Color.BLACK
-                    textSize = 24f
-                    textAlign = android.graphics.Paint.Align.CENTER
-                }
-            )
-            startAngle += sweepAngle
-        }
-    }
-}
-
-
+ */
