@@ -1,6 +1,7 @@
 package com.example.myapplication.ui
 
 import android.app.DatePickerDialog
+import android.icu.util.Calendar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.myapplication.R
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +70,12 @@ fun EditBillPage(
     var amount by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
+
+    // 获取当前日期（今天）
+    val todayDate = viewModel.getTodayDate().split("-").map { it.toInt() }
+    val todayYear = todayDate[0]
+    val todayMonth = todayDate[1] - 1 // Month is zero-based in DatePickerDialog
+    val todayDay = todayDate[2]
 
     // 获取当前 Context
     val context = LocalContext.current
@@ -227,11 +235,25 @@ fun EditBillPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        DatePickerDialog(context, { _, year, month, day ->
-                            selectedDate = "$year-${month + 1}-$day"
-                        },initialYear,
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                // 格式化日期为 yyyy-MM-dd，如果月份或日期是个位数，补零
+                                val formattedDate = String.format(
+                                    Locale.getDefault(), "%04d-%02d-%02d", year, month + 1, day
+                                )
+                                // 选择日期后更新 selectedDate
+                                selectedDate = formattedDate
+                            },
+                            initialYear,
                             initialMonth,
-                            initialDay).show()
+                            initialDay
+                        ).apply {
+                            // 设置最大日期为今天
+                            datePicker.maxDate = Calendar.getInstance().apply {
+                                set(todayYear, todayMonth, todayDay) // 设置为今天
+                            }.timeInMillis
+                        }.show()
                     }
             ) {
                 OutlinedTextField(

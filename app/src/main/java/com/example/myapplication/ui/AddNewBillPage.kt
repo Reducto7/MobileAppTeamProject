@@ -1,6 +1,7 @@
 package com.example.teamproject.ui
 
 import android.app.DatePickerDialog
+import android.icu.util.Calendar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,6 +60,7 @@ import com.example.myapplication.ui.Bill
 import com.example.myapplication.ui.BillViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +77,11 @@ fun AddNewBillPage(
     val initialYear = initialDate[0]
     val initialMonth = initialDate[1] - 1 // Month is zero-based in DatePickerDialog
     val initialDay = initialDate[2]
+
+    val today = viewModel.getTodayDate().split("-").map { it.toInt() }
+    val todayYear = today[0]
+    val todayMonth = today[1] - 1 // Month is zero-based in DatePickerDialog
+    val todayDay = today[2]
 
 // 根据 isIncome 判断选择收入或支出类别
     val categories = if (isIncome) viewModel.incomeCategories else viewModel.expenditureCategories
@@ -218,13 +225,25 @@ fun AddNewBillPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        DatePickerDialog(context, { _, year, month, day ->
-                            selectedDate = "$year-${month + 1}-$day"
-                        },
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                // 格式化日期为 yyyy-MM-dd，如果月份或日期是个位数，补零
+                                val formattedDate = String.format(
+                                    Locale.getDefault(), "%04d-%02d-%02d", year, month + 1, day
+                                )
+                                // 选择日期后更新 selectedDate
+                                selectedDate = formattedDate
+                            },
                             initialYear,
                             initialMonth,
                             initialDay
-                        ).show()
+                        ).apply {
+                            // 设置最大日期为今天
+                            datePicker.maxDate = Calendar.getInstance().apply {
+                                set(todayYear, todayMonth, todayDay) // 设置为今天
+                            }.timeInMillis
+                        }.show()
                     }
             ) {
                 OutlinedTextField(
@@ -242,26 +261,28 @@ fun AddNewBillPage(
 
             // 确认记录按钮
             Button(
-                onClick = {  // 检查输入是否合法
+                onClick = {
                     if (remark.isNotBlank() && amount.isNotBlank() && selectedDate.isNotBlank()) {
                         val id = System.currentTimeMillis().toInt() // 使用当前时间戳生成唯一 ID
                         val parsedAmount = amount.toDoubleOrNull() ?: 0.0
 
                         // 调用上传函数
-                        uploadBillToFirebase(
-                            id = id,
-                            isIncome = isIncome,
-                            category = selectedCategory,
-                            remarks = remark,
-                            amount = parsedAmount,
-                            date = selectedDate
+                        viewModel.uploadBillToDatabase(
+                            Bill(
+                                id = id,
+                                isIncome = isIncome,
+                                category = selectedCategory,
+                                remarks = remark,
+                                amount = parsedAmount,
+                                date = selectedDate
+                            )
                         )
 
                         // 清空表单内容并导航回主页面
                         remark = ""
                         amount = ""
                         selectedDate = viewModel.getTodayDate()
-                        navController.navigate("main")
+                        navController.popBackStack()
                     } else {
                         // 处理非法输入，例如提示用户补全表单
                     }
@@ -275,42 +296,7 @@ fun AddNewBillPage(
     }
 }
 
-private fun uploadBillToFirebase(
-    id: Int,
-    isIncome: Boolean,
-    category: String,
-    remarks: String,
-    amount: Double,
-    date: String
-) {
-    val database = FirebaseDatabase.getInstance()
 
-    val userId = FirebaseAuth.getInstance().currentUser?.uid // 获取当前用户的 UID
-    if (userId != null) {
-        val reference = database.getReference("bills").child(userId) // 将账单存储在当前用户的 UID 下
-
-        // 将数据封装为 Bill 对象
-        val newBill = Bill(
-            id = id,
-            isIncome = isIncome,
-            category = category,
-            remarks = remarks,
-            amount = amount,
-            date = date
-        )
-
-        // 上传数据
-        reference.child(id.toString()).setValue(newBill)
-            .addOnSuccessListener {
-                // 数据上传成功处理，例如显示提示
-            }
-            .addOnFailureListener {
-                // 数据上传失败处理，例如显示错误提示
-            }
-    } else {
-        // 用户未登录的情况，处理错误
-    }
-}
 
 
 

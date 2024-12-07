@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -63,79 +65,108 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun BillItem(
-    bill: Bill, onClick: () -> Unit,
+    bill: Bill?, // 修改为可为空的类型
+    onClick: () -> Unit,
     viewModel: BillViewModel = viewModel()
 ) {
-    // 根据 bill.isIncome 决定使用的类别列表
-    val categories = if (bill.isIncome) viewModel.incomeCategories else viewModel.expenditureCategories
-
-    // 根据 bill.category 找到对应的图标资源 ID
-    val categoryIcon = categories.find { it.first == bill.category }?.second ?: R.drawable.visibility_off
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 8.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        border = BorderStroke(1.dp, Color.LightGray),
-        elevation = CardDefaults.cardElevation(4.dp),
-    ) {
-        Row(
+    // 如果账单为 null，显示空账单提示
+    if (bill == null) {
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically // 垂直居中对齐
+                .padding(vertical = 8.dp, horizontal = 8.dp)
+                .clickable(onClick = onClick),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            border = BorderStroke(1.dp, Color.LightGray),
+            elevation = CardDefaults.cardElevation(4.dp),
         ) {
-            // 左侧图标
-            Icon(
-                painter = painterResource(id = categoryIcon),
-                contentDescription = bill.category,
-                modifier = Modifier
-                    .size(40.dp) // 设置图标大小
-                    .padding(end = 12.dp), // 与文本之间留间距
-                tint = Color.Unspecified // 保持图标原始颜色
-            )
-
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 第一行：显示日期
+                // 显示一个空的占位图标
+                Icon(
+                    painter = painterResource(id = R.drawable.visibility),
+                    contentDescription = "Empty Bill",
+                    modifier = Modifier.size(40.dp),
+                    tint = Color.Gray
+                )
                 Text(
-                    text = bill.date,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "空账单", // 显示空账单的提示文字
+                    style = MaterialTheme.typography.bodyLarge,
                     color = Color.Gray
                 )
+            }
+        }
+    } else {
+        // 正常显示账单内容
+        val categories = if (bill.isIncome) viewModel.incomeCategories else viewModel.expenditureCategories
+        val categoryIcon = categories.find { it.first == bill.category }?.second ?: R.drawable.visibility_off
 
-                Row(
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 8.dp)
+                .clickable(onClick = onClick),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            border = BorderStroke(1.dp, Color.LightGray),
+            elevation = CardDefaults.cardElevation(4.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = categoryIcon),
+                    contentDescription = bill.category,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .padding(end = 12.dp),
+                    tint = Color.Unspecified
+                )
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 第二行：备注
                     Text(
-                        text = bill.remarks,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f) // 备注占满左侧
+                        text = bill.date,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
                     )
-                    // 显示金额，右对齐
-                    Text(
-                        text = "₩${bill.amount.toInt()}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (bill.isIncome) Color(0xFF004B2D) else Color(0xFF7D1D2F),
-                        textAlign = TextAlign.End
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = bill.remarks,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "₩${bill.amount.toInt()}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (bill.isIncome) Color(0xFF004B2D) else Color(0xFF7D1D2F),
+                            textAlign = TextAlign.End
+                        )
+                    }
                 }
             }
         }
     }
 }
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -147,9 +178,21 @@ fun MainPage(
 ) {
     val bills = viewModel.bills // 从 ViewModel 获取账单数据
     val listState = rememberLazyListState() // 用于监听滚动状态
-    var currentMonth by remember { mutableStateOf("12월") } // 用于显示在 AppBar 的月份
-    var currentYear by remember { mutableStateOf("2024년") }
+    val today = viewModel.getTodayDate()
+    var currentMonth by remember { mutableStateOf("${today.split("-")[1]}월") }
+    var currentYear by remember { mutableStateOf("${today.split("-")[0]}년") }
     val context = LocalContext.current
+    var firstVisibleBillId by remember { mutableIntStateOf(0) }
+
+    // 日期格式化器
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+    val sortedBills = bills.sortedByDescending {
+        LocalDate.parse(it.date, dateFormatter)
+    }
+    // 输出排序后第一条账单的 id
+    val firstBillId = sortedBills.firstOrNull()?.id
+    println("排序后第一条账单的 ID: $firstBillId")
 
     val totalIncome by remember {
         derivedStateOf {
@@ -167,59 +210,6 @@ fun MainPage(
                 .sumOf { it.amount }  // 计算总支出
         }
     }
-
-    // 日期格式化器
-    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-    // 检测滚动状态并动态更新 AppBar 的月份
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { index ->
-                val visibleBill = bills.getOrNull(index) // 获取当前可见账单
-                if (visibleBill != null) {
-                    // 提取月份和年份
-                    val dateParts = visibleBill.date.split("-")
-                    val month = dateParts.getOrNull(1)?.toIntOrNull() // 提取月份
-                    val year = dateParts.getOrNull(0) // 提取年份
-                    // 更新月份和年份
-                    currentMonth = if (month != null) "${month}월" else "未知月份"
-                    currentYear = year?.let { "${it}년" } ?: "未知年份"
-                }
-            }
-    }
-
-    // 初始化时，直接根据第一条账单的月份来设置 currentMonth
-    LaunchedEffect(bills) {
-        bills.firstOrNull()?.let { firstBill ->
-            val dateParts = firstBill.date.split("-")
-            val month = dateParts.getOrNull(1)?.toIntOrNull()
-            val year = dateParts.getOrNull(0)
-            currentMonth = if (month != null) "${month}월" else "未知月份"
-            currentYear = year?.let { "${it}년" } ?: "未知年份"
-        }
-    }
-/*
-    // 监听 currentMonth 变化并滚动到对应的账单
-    LaunchedEffect(currentMonth) {
-        // 找到 currentMonth 对应的最新账单
-        val targetBill = bills
-            .filter { bill ->
-                val billMonth = bill.date.split("-").getOrNull(1)
-                billMonth == currentMonth.split("월").getOrNull(0) // 比较月份
-            }
-            .sortedByDescending { bill ->
-                LocalDate.parse(bill.date, dateFormatter)  // 按日期倒序排序，找到最新的账单
-            }
-            .firstOrNull()
-
-        // 如果找到对应的账单，滚动到该账单
-        targetBill?.let { bill ->
-            val targetIndex = bills.indexOf(bill)  // 获取该账单的索引
-            listState.animateScrollToItem(targetIndex)  // 滚动到该账单
-        }
-    }
-
- */
 
     Scaffold(
         topBar = {
@@ -246,14 +236,13 @@ fun MainPage(
                                 IconButton(
                                     onClick = {
                                         // 弹出年月选择器
-                                        ShowMonthPicker(context
-                                        ) { selectedMonth ->
+                                        ShowMonthPicker(context, currentYear, currentMonth) { selectedMonth ->
                                             // 更新显示的月份
                                             currentMonth = "${selectedMonth.split("-")[1]}월"
                                             currentYear = "${selectedMonth.split("-")[0]}년"
                                         }
                                     }
-                                ) {
+                                ){
                                     Icon(
                                         imageVector = Icons.Filled.KeyboardArrowDown,
                                         contentDescription = "Dropdown",
@@ -374,9 +363,7 @@ fun MainPage(
                     state = listState,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(bills.sortedByDescending {
-                        LocalDate.parse(it.date, dateFormatter)
-                    }) { bill ->
+                    items(sortedBills) { bill ->
                         BillItem(
                             bill = bill,
                             onClick = {
@@ -386,6 +373,51 @@ fun MainPage(
                         )
                     }
                 }
+
+                // 滚动到特定月份或年份
+                suspend fun scrollToBillByDate(
+                    targetYear: String?,
+                    targetMonth: String?,
+                    sortedBills: List<Bill>,
+                    listState: LazyListState
+                ) {
+                    val targetIndex = sortedBills.indexOfFirst { bill ->
+                        val dateParts = bill.date.split("-")
+                        val year = dateParts.getOrNull(0)
+                        val month = dateParts.getOrNull(1)?.toIntOrNull()?.toString()
+                        (targetYear == null || year == targetYear) && (targetMonth == null || month == targetMonth)
+                    }
+
+                    if (targetIndex >= 0) {
+                        listState.scrollToItem(targetIndex)
+                    }else {
+                        // 滚动到最底部
+                        //listState.scrollToItem(sortedBills.lastIndex)
+                    }
+                }
+
+// 监听年份和月份变化，自动滚动到对应账单
+                LaunchedEffect(currentYear, currentMonth) {
+                    val year = currentYear.takeIf { it != "未知年份" }?.removeSuffix("년")
+                    val month = currentMonth.takeIf { it != "未知月份" }?.removeSuffix("월")
+                    scrollToBillByDate(year, month, sortedBills, listState)
+                }
+
+// 动态监听滚动，更新当前可视账单的年份和月份
+                LaunchedEffect(listState, sortedBills) {
+                    snapshotFlow { listState.firstVisibleItemIndex }
+                        .collect { index ->
+                            val visibleBill = sortedBills.getOrNull(index)
+                            if (visibleBill != null) {
+                                val dateParts = visibleBill.date.split("-")
+                                val month = dateParts.getOrNull(1)?.toIntOrNull() // 提取月份
+                                val year = dateParts.getOrNull(0) // 提取年份
+                                firstVisibleBillId = visibleBill.id
+                                currentMonth = if (month != null) "${month}월" else "未知月份"
+                                currentYear = year?.let { "${it}년" } ?: "未知年份"
+                            }
+                        }
+                }
             }
         }
     }
@@ -393,12 +425,15 @@ fun MainPage(
 
 fun ShowMonthPicker(
     context: Context,
+    initialYear: String,
+    initialMonth: String,
     onMonthSelected: (String) -> Unit
 ) {
     val calendar = Calendar.getInstance()
 
-    val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
+    // Set initial year and month
+    val year = initialYear.split("년")[0].toInt()
+    val month = initialMonth.split("월")[0].toInt() - 1 // month is 0-based
 
     val datePickerDialog = android.app.DatePickerDialog(
         context,
@@ -412,16 +447,16 @@ fun ShowMonthPicker(
         1 // 设置默认日为 1
     )
 
-    // 隐藏“日”选择器
+    // Hide the day selector
     try {
         val daySpinnerId = context.resources.getIdentifier("android:id/day", null, null)
         val daySpinner = datePickerDialog.datePicker.findViewById<View>(daySpinnerId)
         daySpinner?.visibility = View.GONE
     } catch (e: Exception) {
-        e.printStackTrace() // 打印异常信息，保持稳定性
+        e.printStackTrace() // Print exception for stability
     }
 
-    datePickerDialog.show() // 显示日期选择器对话框
+    datePickerDialog.show() // Show the date picker dialog
 }
 
 

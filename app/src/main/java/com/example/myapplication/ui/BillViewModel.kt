@@ -94,6 +94,33 @@ class BillViewModel : ViewModel() {
         }
     }
 
+    // 上传账单到 Firebase 数据库
+    fun uploadBillToDatabase(bill: Bill) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            // 创建一个新的账单条目
+            val billId = database.child(userId).push().key ?: return  // 生成一个唯一的 ID
+            val billData = mapOf(
+                "id" to bill.id,
+                "income" to bill.isIncome,
+                "category" to bill.category,
+                "remarks" to bill.remarks,
+                "amount" to bill.amount,
+                "date" to bill.date
+            )
+
+            // 上传账单数据到 Firebase
+            database.child(userId).child(billId).setValue(billData)
+                .addOnSuccessListener {
+                    println("账单上传成功")
+                }
+                .addOnFailureListener { error ->
+                    println("账单上传失败: ${error.message}")
+                }
+        }
+    }
+
+
     // 根据账单 ID 获取账单信息，ID 为 Int? 类型
     fun fetchBillById(billId: Int?, onResult: (Bill?) -> Unit) {
         if (billId == null) {
