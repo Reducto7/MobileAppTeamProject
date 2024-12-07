@@ -77,6 +77,9 @@ fun DetailsPage(
     var lineChartData by remember { mutableStateOf(emptyList<Float>()) }
     var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
 
+    // 选中点的索引
+    var selectedIndex by remember { mutableStateOf(-1) }
+
     // 根据年份和月份获取当前月份的天数
     fun getDaysInMonth(year: Int, month: Int): Int {
         return when (month) {
@@ -234,8 +237,9 @@ fun DetailsPage(
                 xAxisLabels = if (isYearSelected) generateXAxisLabelsForYear() else generateXAxisLabels(
                     daysInMonth
                 ),
-                selectedIndex = -1,
-                onSelectedIndexChanged = {}
+                selectedIndex = selectedIndex,
+                onSelectedIndexChanged = { newIndex ->
+                    selectedIndex = newIndex}
             )
             // 排序切换按钮
             Row(
