@@ -54,11 +54,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
@@ -527,38 +529,62 @@ fun CustomLineChart(
                     )
                 }
 
-                // 绘制选中点
                 if (selectedIndex >= 0 && selectedIndex < dataPoints.size) {
                     val x = (selectedIndex / maxX.toFloat()) * size.width
-                    val y =
-                        size.height - xAxisPadding - ((dataPoints[selectedIndex] - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+                    val y = size.height - xAxisPadding - ((dataPoints[selectedIndex] - minY) / (maxY - minY)) * (size.height - xAxisPadding)
+
                     // 画选择的点
                     drawCircle(color = Color.Black, radius = 3.dp.toPx(), center = Offset(x, y))
-                    // 显示选择的数据
-                    if (isYearSelected) {
-                        drawContext.canvas.nativeCanvas.drawText(
-                            "${selectedIndex + 1}월  ₩${dataPoints[selectedIndex].toInt()}",
-                            x,
-                            y - 16.dp.toPx(),
-                            android.graphics.Paint().apply {
-                                color = android.graphics.Color.BLACK
-                                textSize = 46f
-                                textAlign = android.graphics.Paint.Align.CENTER
-                            }
-                        )
+
+                    // 设置文本内容
+                    val text = if (isYearSelected) {
+                        "${selectedIndex + 1}월  ₩${dataPoints[selectedIndex].toInt()}"
                     } else {
-                        drawContext.canvas.nativeCanvas.drawText(
-                            "${selectedIndex + 1}일  ₩${dataPoints[selectedIndex].toInt()}",
-                            x,
-                            y - 16.dp.toPx(),
-                            android.graphics.Paint().apply {
-                                color = android.graphics.Color.BLACK
-                                textSize = 46f
-                                textAlign = android.graphics.Paint.Align.CENTER
-                            }
+                        "${selectedIndex + 1}일  ₩${dataPoints[selectedIndex].toInt()}"
+                    }
+
+                    // 创建用于测量文本的 Paint 对象
+                    val textPaint = android.graphics.Paint().apply {
+                        textSize = 46f
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+
+                    // 计算文本的宽度和高度
+                    val textWidth = textPaint.measureText(text)
+                    val textHeight = textPaint.fontMetrics.bottom - textPaint.fontMetrics.top // 计算文本的高度
+
+                    // 使用 drawIntoCanvas 来绘制背景圆角矩形并添加阴影
+                    drawIntoCanvas { canvas ->
+                        val paint = android.graphics.Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            setShadowLayer(8f, 4f, 4f, android.graphics.Color.GRAY) // 给矩形添加阴影
+                        }
+
+                        val rectLeft = x - textWidth / 2 - 8.dp.toPx()
+                        val rectTop = y - textHeight - 16.dp.toPx()
+                        val rectRight = rectLeft + textWidth + 16.dp.toPx()
+                        val rectBottom = rectTop + textHeight + 8.dp.toPx()
+
+                        // 绘制圆角矩形
+                        canvas.nativeCanvas.drawRoundRect(
+                            rectLeft, rectTop, rectRight, rectBottom, 16f, 16f, paint // 圆角半径为 12f
                         )
                     }
+
+                    // 绘制文本（不带阴影效果）
+                    drawContext.canvas.nativeCanvas.drawText(
+                        text,
+                        x,
+                        y - 16.dp.toPx(),
+                        textPaint.apply {
+                            color = android.graphics.Color.BLACK
+                        }
+                    )
                 }
+
+
+
+
             }
 
     }

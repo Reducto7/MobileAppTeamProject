@@ -47,6 +47,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -152,17 +153,20 @@ fun DetailsPage(
                             contentDescription = "Back"
                         )
                     }
-                }
+                },
+                modifier = Modifier.fillMaxWidth().shadow(8.dp)
             )
         }
     ) {
         Column(
             modifier = Modifier
                 .padding(it)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+
+            Spacer(modifier = Modifier.height(8.dp))
             // 年月选择
             Row(
                 modifier = Modifier
