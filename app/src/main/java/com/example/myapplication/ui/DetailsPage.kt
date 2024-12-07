@@ -50,9 +50,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import java.net.URLEncoder
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,13 +75,14 @@ fun DetailsPage(
     var selectedMonth by remember { mutableStateOf(currentMonth) }
     var isYearSelected by remember { mutableStateOf(false) } // 控制年份或月份模式
     var sortByAmount by remember { mutableStateOf(true) } // 默认按金额排序
+    var sortByDate by remember { mutableStateOf(false) } // 按日期排序
 
     // 滚动状态
     val yearListState = rememberLazyListState()
     val monthListState = rememberLazyListState()
 
     var lineChartData by remember { mutableStateOf(emptyList<Float>()) }
-    var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
+    var barChartData by remember { mutableStateOf(emptyList<Triple<String, Float, String>>()) }
 
     // 选中点的索引
     var selectedIndex by remember { mutableStateOf(-1) }
@@ -89,48 +95,41 @@ fun DetailsPage(
             else -> 31
         }
     }
-
     val daysInMonth = getDaysInMonth(selectedYear, selectedMonth)
 
-    // 更新数据
-    LaunchedEffect(selectedYear, selectedMonth, isYearSelected, sortByAmount) {
+    LaunchedEffect(selectedYear, selectedMonth, isYearSelected, sortByAmount, sortByDate) {
+        val bills = if (isYearSelected) {
+            // 获取指定年份的原始账单数据
+            viewModel.getBillsForYearCategory(category, selectedYear, isIncome)
+        } else {
+            // 获取指定月份的原始账单数据
+            viewModel.getBillsForCategory(category, selectedYear, selectedMonth, isIncome)
+        }
+        // 根据排序状态更新柱状图数据
+        barChartData = if (bills.isNotEmpty()) {
+            when {
+                sortByAmount -> bills.sortedByDescending { it.amount }
+                sortByDate -> {
+                    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                    bills.sortedBy { LocalDate.parse(it.date, dateFormatter) }
+                }
+                else -> bills
+            }.map { Triple("${it.remarks}", it.amount.toFloat(), it.date) }
+        } else {
+            emptyList()
+        }
+
         if (isYearSelected) {
             // 点击年份：显示每个月的金额总和
             lineChartData = viewModel.getMonthlyTotalsForCategory(category, selectedYear, isIncome)
-            val bills = viewModel.getBillsForYearCategory(category, selectedYear, isIncome)
-            println("Selected Year: $selectedYear, Bills: $bills")
-            // 如果账单不为空，生成柱状图数据
-            barChartData = if (bills.isNotEmpty()) {
-                if (sortByAmount) {
-                    bills.sortedByDescending { it.amount }
-                } else {
-                    bills.sortedBy { it.date }
-                }.map { it.remarks to it.amount.toFloat() }
-            } else {
-                emptyList() // 如果账单为空，设置为空数据
-            }
-            println("BarChartData: $barChartData")
         } else {
             // 点击月份：显示每天的金额总和
             lineChartData =
                 viewModel.getDailyCategoryTotals(selectedYear, selectedMonth, category, isIncome)
-                    .take(getDaysInMonth(selectedYear, selectedMonth))
+                    .take(daysInMonth)
                     .map { it.toFloat() }
-            val bills = viewModel.getBillsForCategory(category, selectedYear, selectedMonth, isIncome)
-
-            // 如果账单不为空，生成柱状图数据
-            barChartData = if (bills.isNotEmpty()) {
-                if (sortByAmount) {
-                    bills.sortedByDescending { it.amount }
-                } else {
-                    bills.sortedBy { it.date }
-                }.map { it.remarks to it.amount.toFloat() }
-            } else {
-                emptyList() // 如果账单为空，设置为空数据
-            }
         }
     }
-
 
     // 滚动到当前年份或月份
     LaunchedEffect(Unit) {
@@ -243,26 +242,89 @@ fun DetailsPage(
                 ),
                 selectedIndex = selectedIndex,
                 onSelectedIndexChanged = { newIndex ->
-                    selectedIndex = newIndex}
+                    selectedIndex = newIndex
+                }
             )
-            // 排序切换按钮
+
+            // 中间统计信息
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                //horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = { sortByAmount = true }) {
-                    Text("Sort by Amount", color = if (sortByAmount) Color.Black else Color.Gray)
+                Row {
+                    TextButton(onClick = {
+                        sortByAmount = true;
+                        sortByDate = false
+                    },
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                            .offset(x = (-16).dp)
+                            .padding(start = 0.dp) // 将按钮左侧与图标对齐
+                    ) {
+                        Text("금액",
+                            color = if (sortByAmount) Color.Black else Color.Gray,
+                            style = TextStyle(fontSize = 30.sp)
+                            )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp)) // 按钮间距
+                    Text(
+                        "|",
+                        color = Color.Gray,
+                        style = TextStyle(fontSize = 45.sp),
+                        modifier = Modifier.padding(horizontal = 4.dp).offset(x = (-20).dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp)) // 按钮间距
+                    TextButton(onClick = {
+                        sortByAmount = false;
+                        sortByDate = true
+                    },
+                        modifier = Modifier.align(Alignment.CenterVertically).offset(x = (-30).dp)
+                        ) {
+                        Text(
+                            "시간",
+                            color = if (!sortByAmount) Color.Black else Color.Gray,
+                            style = TextStyle(fontSize = 30.sp)
+                        )
+                    }
                 }
-                TextButton(onClick = { /*TODO*/ }) {
-                    Text("/")
-                }
-                TextButton(onClick = { sortByAmount = false }) {
-                    Text("Sort by Date", color = if (!sortByAmount) Color.Black else Color.Gray)
+
+                val totalAmount = barChartData.sumOf { it.second.toDouble() }.toInt()
+                val averageAmount =
+                    if (barChartData.isNotEmpty()) totalAmount / barChartData.size else 0
+                Row {
+                    Column {
+                        Text(
+                            text = "총",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                        Text(
+                            text = "₩$totalAmount",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(40.dp))
+                    Column {
+                        Text(
+                            text = "평균",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                        Text(
+                            text = "₩$averageAmount",
+                            modifier = Modifier.align(Alignment.End), // 让这个文本靠左对齐
+                            //color = Color.Gray
+                        )
+                    }
                 }
             }
 
+
             // 柱状图
-            //DividerWithText("-")
             VerticalBarChartWithLabels(
                 data = barChartData,
                 maxValue = barChartData.maxOfOrNull { it.second } ?: 1f,
@@ -272,11 +334,10 @@ fun DetailsPage(
     }
 }
 
-
-//
+//柱状图实现
 @Composable
 fun VerticalBarChartWithLabels(
-    data: List<Pair<String, Float>>, // 数据：备注字段和金额
+    data: List<Triple<String, Float, String>>, // 数据：备注字段和金额
     maxValue: Float,                 // 最大值：用于确定横轴比例
     category: String,                // 传递类别名称
     viewModel: BillViewModel = viewModel() // 账单数据视图模型
@@ -292,79 +353,98 @@ fun VerticalBarChartWithLabels(
                 }
             }
     ) {
-        // 使用 LazyColumn 实现滚动
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            // 遍历数据并绘制每一项
-            items(data.sortedByDescending { it.second }) { (label, value) ->
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
+        if (data.isEmpty()) {
+            // 如果数据为空，显示“没有数据”文本
+            Text(
+                text = "데이터 없음",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp).offset(y = (-64).dp),
+                color = Color.Gray,
+                style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            )
+        } else {
+            // 使用 LazyColumn 实现滚动
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // 遍历数据并绘制每一项
+                items(data) { (label, value, date) ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
                             //.clickable { onCategoryClick(label) }, // 点击事件
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 显示图标
-                        val iconId = viewModel.incomeCategories.find { it.first == category }?.second
-                            ?: viewModel.expenditureCategories.find { it.first == category }?.second
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 显示图标
+                            val iconId = viewModel.incomeCategories.find { it.first == category }?.second
+                                ?: viewModel.expenditureCategories.find { it.first == category }?.second
 
-                        if (iconId != null) {
-                            Icon(
-                                painter = painterResource(id = iconId),
-                                contentDescription = label,
-                                modifier = Modifier
-                                    .size(44.dp) // 设置图标大小
-                                    .padding(end = 8.dp)
-                                    .offset(y = 4.dp),
-                                tint = Color.Unspecified // 使用原始颜色
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // 第一行：左侧为标签，右侧为金额
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // 百分比计算
-                                val totalValue = data.sumOf { it.second.toDouble() } // 总和
-                                val percentage =
-                                    if (totalValue > 0) (value / totalValue * 100).toInt() else 0
-
-                                // 标签
-                                Text(
-                                    text = "$label   ${percentage}%",
-                                    modifier = Modifier.weight(1f),
-                                    color = Color.Black,
-                                )
-
-                                // 金额
-                                Text(
-                                    text = "₩${value.toInt()}",
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(end = 8.dp),
-                                    style = MaterialTheme.typography.bodyMedium
+                            if (iconId != null) {
+                                Icon(
+                                    painter = painterResource(id = iconId),
+                                    contentDescription = label,
+                                    modifier = Modifier
+                                        .size(44.dp) // 设置图标大小
+                                        .padding(end = 8.dp)
+                                        .offset(y = 4.dp),
+                                    tint = Color.Unspecified // 使用原始颜色
                                 )
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                            // 第二行：柱状图
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(14.dp)
-                                    .background(Color.Transparent) // 设置透明背景
-                            ) {
+                            // 第一行：左侧为标签，右侧为金额
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 百分比计算
+                                    val totalValue = data.sumOf { it.second.toDouble() } // 总和
+                                    val percentage =
+                                        if (totalValue > 0) (value / totalValue * 100).toInt() else 0
+
+                                    // 标签
+                                    Text(
+                                        text = "$label   ${percentage}%",
+                                        modifier = Modifier.weight(1f),
+                                        color = Color.Black,
+                                    )
+                                    // 日期（灰色字体）
+                                    Text(
+                                        text = date, // 假设日期是传递的 `date` 字段
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(end = 8.dp),
+                                        style = MaterialTheme.typography.bodySmall // 使用较小字体
+                                    )
+
+                                    // 金额
+                                    Text(
+                                        text = "₩${value.toInt()}",
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(end = 8.dp),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+
+                                // 第二行：柱状图
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(14.dp)) // 设置圆角，保证动态调整后两端为圆角
-                                        .background(Color.Black)
-                                )
+                                        .fillMaxWidth()
+                                        .height(14.dp)
+                                        .background(Color.Transparent) // 设置透明背景
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(fraction = value / maxValue) // 动态调整黑条宽度
+                                            .fillMaxHeight()
+                                            .clip(RoundedCornerShape(14.dp)) // 设置圆角，保证动态调整后两端为圆角
+                                            .background(Color.Black)
+                                    )
+                                }
                             }
                         }
                     }
@@ -373,4 +453,5 @@ fun VerticalBarChartWithLabels(
         }
     }
 }
+
 
