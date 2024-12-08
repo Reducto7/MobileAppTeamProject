@@ -50,11 +50,12 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
 
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var comfirm by rememberSaveable { mutableStateOf("") }
+    var confirm by rememberSaveable { mutableStateOf("") }
     var isDialogVisible by rememberSaveable { mutableStateOf(false) }
     var isRegistrationSuccessful by rememberSaveable { mutableStateOf(false) }
     val passwordVisible = remember { mutableStateOf(false) }
     var dialogMessage by rememberSaveable { mutableStateOf("") }
+    var showErrors by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -91,6 +92,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("E-mail") },
+                isError = showErrors && email.isEmpty(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -100,6 +102,7 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
+                isError = showErrors && password.isEmpty(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -115,26 +118,21 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
             )
 
             OutlinedTextField(
-                value = comfirm,
-                onValueChange = { comfirm = it },
+                value = confirm,
+                onValueChange = { confirm = it },
                 label = { Text("Confirm Password") },
-                isError = email.isNotEmpty() && password.isNotEmpty() && comfirm.isNotEmpty() && comfirm != password,
+                isError = showErrors && (confirm.isEmpty() || confirm != password),
                 keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done // 将转行键设置为“确认键”
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        if (email.isBlank() || password.isBlank()) {
-                            dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
-                            isDialogVisible = true
-                        } else {
                             registerUser(email, password) { success, message ->
                                 isRegistrationSuccessful = success
                                 dialogMessage = message
                                 isDialogVisible = true
                             }
-                        }
                     }
                 ),
                 visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
@@ -154,10 +152,8 @@ fun RegisterPage(navController: NavController, modifier: Modifier = Modifier) {
 
             Button(
                 onClick = {
-                    if (email.isBlank() || password.isBlank()) {
-                        dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
-                        isDialogVisible = true
-                    } else {
+                    showErrors = true
+                    if (email.isNotBlank() && password.isNotBlank() && password == confirm) {
                         registerUser(email, password) { success, message ->
                             isRegistrationSuccessful = success
                             dialogMessage = message

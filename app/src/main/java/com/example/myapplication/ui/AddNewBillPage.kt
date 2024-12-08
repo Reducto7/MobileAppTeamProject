@@ -4,7 +4,6 @@ import android.app.DatePickerDialog
 import android.icu.util.Calendar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -26,9 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -39,7 +35,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,11 +50,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.myapplication.R
 import com.example.myapplication.ui.Bill
 import com.example.myapplication.ui.BillViewModel
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,6 +80,8 @@ fun AddNewBillPage(
 
 // 通过 selectedCategory 保存选中的类别
     var selectedCategory by remember { mutableStateOf("") }  // 获取类别名称
+
+    var showErrors by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -164,7 +158,7 @@ fun AddNewBillPage(
             }
 
             LazyVerticalGrid(
-                columns = GridCells.Fixed(5),  // 每行固定 4 个图标
+                columns = GridCells.Fixed(5),  // 每行固定 5 个图标
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(0.dp)
             ) {
@@ -216,6 +210,7 @@ fun AddNewBillPage(
                     }
                 },
                 label = { Text("금액") },
+                isError = showErrors && amount.isEmpty(),
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -225,6 +220,7 @@ fun AddNewBillPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
+                        // 创建 DatePickerDialog
                         DatePickerDialog(
                             context,
                             { _, year, month, day ->
@@ -245,7 +241,8 @@ fun AddNewBillPage(
                             }.timeInMillis
                         }.show()
                     }
-            ) {
+            )
+            {
                 OutlinedTextField(
                     value = selectedDate,
                     onValueChange = { },
@@ -262,7 +259,8 @@ fun AddNewBillPage(
             // 确认记录按钮
             Button(
                 onClick = {
-                    if (remark.isNotBlank() && amount.isNotBlank() && selectedDate.isNotBlank()) {
+                    showErrors = true
+                    if (amount.isNotBlank() && selectedDate.isNotBlank()) {
                         val id = System.currentTimeMillis().toInt() // 使用当前时间戳生成唯一 ID
                         val parsedAmount = amount.toDoubleOrNull() ?: 0.0
 

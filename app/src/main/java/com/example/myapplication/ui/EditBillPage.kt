@@ -4,7 +4,6 @@ import android.app.DatePickerDialog
 import android.icu.util.Calendar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -37,7 +35,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +50,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.myapplication.R
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +78,8 @@ fun EditBillPage(
 
     // 定义一个状态变量，标识是否已经初始化
     var isInitialized by remember { mutableStateOf(false) }
+
+    var showErrors by remember { mutableStateOf(false) }
 
     viewModel.fetchBillById(id) { bill ->
         if (bill != null && !isInitialized) { // 只在未初始化时设置初始值
@@ -225,6 +223,7 @@ fun EditBillPage(
                     }
                 },
                 label = { Text("금액") },
+                isError = showErrors && amount.isEmpty(),
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -288,7 +287,8 @@ fun EditBillPage(
 
                 Button(
                     onClick = {
-                        if (id != null) {
+                        showErrors = true
+                        if (id != null && amount.isNotBlank()) {
                             val updatedBill = Bill(
                                 id = id,
                                 isIncome = isIncome,

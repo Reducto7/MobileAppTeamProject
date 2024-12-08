@@ -1,19 +1,16 @@
 package com.example.myapplication.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -123,12 +120,10 @@ fun AccountStatsSection(totalDays: Int, totalRecords: Int) {
         Text(
             text = "총 청구일：$totalDays",
             fontSize = 18.sp,
-            //color = Color.White // 设置字体颜色为白色
         )
         Text(
             text = "총 항목：$totalRecords",
             fontSize = 18.sp,
-            //color = Color.White // 设置字体颜色为白色
         )
     }
 }
@@ -139,7 +134,7 @@ fun FunctionButtonsSection(navController: NavController) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        OutlinedButton(
+        Button(
             onClick = {
                 // 退出账号并跳转到登录页面
                 navController.navigate("login") {
@@ -147,7 +142,6 @@ fun FunctionButtonsSection(navController: NavController) {
                 }
             },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
         ) {
             Text(text = "로그아웃")
         }

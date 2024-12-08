@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -50,11 +49,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -97,7 +95,7 @@ fun ChartPage(
     var isYearSelected by remember { mutableStateOf(false) } // 外部管理的状态
     var barChartData by remember { mutableStateOf(emptyList<Pair<String, Float>>()) }
 
-    var selectedYear by remember { mutableStateOf(currentYear) } // 默认选中当前年份
+    var selectedYear by remember { mutableIntStateOf(currentYear) } // 默认选中当前年份
     var selectedMonth by remember { mutableStateOf(months[currentMonth - 1]) } // 默认选中当前月份
 
     var selectedOption by remember { mutableStateOf("지출 차트") } // 动态标题内容
@@ -108,7 +106,7 @@ fun ChartPage(
         if (isYearSelected) {
             // 按年份模式加载数据
             val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
-                selectedYear?: currentYear,
+                selectedYear,
                 viewModel.isIncomeSelected
             )
             barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
@@ -118,7 +116,7 @@ fun ChartPage(
             // 按月份模式加载数据
             val monthlyIndex = months.indexOf(selectedMonth) + 1 // 将月份转换为数字
             val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
-                selectedYear?: currentYear,
+                selectedYear,
                 monthlyIndex,
                 viewModel.isIncomeSelected
             )
@@ -156,7 +154,8 @@ fun ChartPage(
                     IconButton(onClick = { isDropdownExpanded = !isDropdownExpanded }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowDropDown,
-                            contentDescription = "Dropdown"
+                            contentDescription = "Dropdown",
+                            modifier = Modifier.size(36.dp)
                         )
                     }
 
@@ -174,7 +173,7 @@ fun ChartPage(
                                 if (isYearSelected) {
                                     // 按年份模式加载数据
                                     val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
-                                        selectedYear?: currentYear,
+                                        selectedYear,
                                         viewModel.isIncomeSelected
                                     )
                                     barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
@@ -184,7 +183,7 @@ fun ChartPage(
                                     // 按月份模式加载数据
                                     val monthlyIndex = months.indexOf(selectedMonth) + 1 // 将月份转换为数字
                                     val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
-                                        selectedYear?: currentYear,
+                                        selectedYear,
                                         monthlyIndex,
                                         viewModel.isIncomeSelected
                                     )
@@ -204,7 +203,7 @@ fun ChartPage(
                                 if (isYearSelected) {
                                     // 按年份模式加载数据
                                     val yearlyData = viewModel.getYearlyCategoryIncomeExpenditure(
-                                        selectedYear?: currentYear,
+                                        selectedYear,
                                         viewModel.isIncomeSelected
                                     )
                                     barChartData = yearlyData.map { (category, total) -> category to total.toFloat() }
@@ -214,7 +213,7 @@ fun ChartPage(
                                     // 按月份模式加载数据
                                     val monthlyIndex = months.indexOf(selectedMonth) + 1 // 将月份转换为数字
                                     val monthlyData = viewModel.getMonthlyCategoryIncomeExpenditure(
-                                        selectedYear?: currentYear,
+                                        selectedYear,
                                         monthlyIndex,
                                         viewModel.isIncomeSelected
                                     )
@@ -609,7 +608,6 @@ fun generateXAxisLabelsForYear(): List<String> {
 fun HorizontalBarChartWithClick(
     data: List<Pair<String, Float>>, // 数据格式：标签和数值
     maxValue: Float,                 // 数据中的最大值，用于计算比例
-    modifier: Modifier = Modifier,
     onCategoryClick: (String) -> Unit, // 点击事件，传递类别名称
     viewModel: BillViewModel = viewModel()
 ) {

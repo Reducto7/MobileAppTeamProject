@@ -4,11 +4,9 @@ import android.content.Context
 import android.icu.util.Calendar
 import android.view.View
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +26,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.BottomAppBar
@@ -112,7 +109,7 @@ fun BillItem(
     } else {
         // 正常显示账单内容
         val categories = if (bill.isIncome) viewModel.incomeCategories else viewModel.expenditureCategories
-        val categoryIcon = categories.find { it.first == bill.category }?.second ?: R.drawable.visibility_off
+        val categoryIcon = categories.find { it.first == bill.category }?.second ?: R.drawable.error
 
         Card(
             modifier = Modifier
@@ -237,14 +234,14 @@ fun MainPage(
                     ) {
                         Column {
                             Text(
-                                text = "$currentYear",
+                                text = currentYear,
                                 color = Color.Black,
                                 style = TextStyle(fontSize = 16.sp)
                             )
 
                             Row {
                                 Text(
-                                    text = "$currentMonth",
+                                    text = currentMonth,
                                     color = Color.Black,
                                     style = TextStyle(fontSize = 24.sp),
                                     fontWeight = FontWeight.Bold
@@ -252,7 +249,7 @@ fun MainPage(
                                 IconButton(
                                     onClick = {
                                         // 弹出年月选择器
-                                        ShowMonthPicker(
+                                        showMonthPicker(
                                             context,
                                             currentYear,
                                             currentMonth
@@ -510,7 +507,7 @@ fun MainPage(
     }
 }
 
-fun ShowMonthPicker(
+fun showMonthPicker(
     context: Context,
     initialYear: String,
     initialMonth: String,

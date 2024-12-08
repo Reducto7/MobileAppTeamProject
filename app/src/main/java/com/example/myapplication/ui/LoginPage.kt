@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -43,6 +42,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -69,7 +69,6 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginPage(navController: NavController, modifier: Modifier = Modifier, context: Context) {
     // 添加 Google Sign-In 客户端配置
@@ -128,6 +127,7 @@ fun EmailLoginSection(navController: NavController, context: Context) {
     var dialogMessage by rememberSaveable { mutableStateOf("") }
     var autoLogin by rememberSaveable { mutableStateOf(false) }
     val passwordVisible = remember { mutableStateOf(false) }
+    var showErrors by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     val sharedPreferences = context.getSharedPreferences("autoLoginPrefs", Context.MODE_PRIVATE)
@@ -148,6 +148,7 @@ fun EmailLoginSection(navController: NavController, context: Context) {
             value = email,
             onValueChange = { email = it },
             label = { Text("Mail") },
+            isError = showErrors && email.isEmpty(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
@@ -160,13 +161,9 @@ fun EmailLoginSection(navController: NavController, context: Context) {
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done
             ),
-            isError = email.isEmpty() && password.isEmpty(),
+            isError = showErrors && password.isEmpty(),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    if (email.isBlank() || password.isBlank()) {
-                        dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
-                        isDialogVisible = true
-                    } else {
                         loginUser(email, password) { success, message ->
                             if (success) {
                                 if (autoLogin) {
@@ -190,7 +187,7 @@ fun EmailLoginSection(navController: NavController, context: Context) {
                                 isDialogVisible = true
                             }
                         }
-                    }
+
                 }
             ),
             visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
@@ -207,10 +204,8 @@ fun EmailLoginSection(navController: NavController, context: Context) {
 
         Button(
             onClick = {
-                if (email.isBlank() || password.isBlank()) {
-                    dialogMessage = "이메일과 비밀번호는 비워 둘 수 없습니다"
-                    isDialogVisible = true
-                } else {
+                showErrors = true
+                if (email.isNotBlank() && password.isNotBlank()) {
                     loginUser(email, password) { success, message ->
                         if (success) {
                             if (autoLogin) {
@@ -286,14 +281,14 @@ fun DividerWithText(text: String) {
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Divider(modifier = Modifier.weight(1f), color = Color.Gray)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray)
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 8.dp),
             color = Color.Gray,
             style = typography.bodyMedium
         )
-        Divider(modifier = Modifier.weight(1f), color = Color.Gray)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray)
     }
 }
 
