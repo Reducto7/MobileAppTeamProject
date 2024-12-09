@@ -215,7 +215,9 @@ fun DetailsPage(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    onClick = { isYearSelected = false },
+                    onClick = {
+                        selectedIndex = -1
+                        isYearSelected = false },
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = if (isYearSelected) Color.White else Color.Black,
                         contentColor = if (isYearSelected) Color.Black else Color.White
@@ -230,7 +232,9 @@ fun DetailsPage(
                     )
                 }
                 Button(
-                    onClick = { isYearSelected = true },
+                    onClick = {
+                        selectedIndex = -1
+                        isYearSelected = true },
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = if (isYearSelected) Color.Black else Color.White,
                         contentColor = if (isYearSelected) Color.White else Color.Black
@@ -253,7 +257,9 @@ fun DetailsPage(
                             text = year.toString(),
                             modifier = Modifier
                                 .padding(8.dp)
-                                .clickable { selectedYear = year },
+                                .clickable {
+                                    selectedIndex = -1
+                                    selectedYear = year },
                             color = if (selectedYear == year) Color.Black else Color.Gray
                         )
                     }
@@ -265,7 +271,9 @@ fun DetailsPage(
                             text = "${month}월",
                             modifier = Modifier
                                 .padding(8.dp)
-                                .clickable { selectedMonth = month },
+                                .clickable {
+                                    selectedIndex = -1
+                                    selectedMonth = month },
                             color = if (selectedMonth == month) Color.Black else Color.Gray
                         )
                     }

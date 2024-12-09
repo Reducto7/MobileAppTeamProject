@@ -167,6 +167,7 @@ fun ChartPage(
                         DropdownMenuItem(
                             text = { Text("지출 차트") },
                             onClick = {
+                                selectedIndex = -1
                                 // 更新逻辑为收入图表
                                 selectedOption = "지출 차트" // 更新标题
                                 viewModel.isIncomeSelected = false
@@ -197,6 +198,7 @@ fun ChartPage(
                         DropdownMenuItem(
                             text = { Text("수입 차트") },
                             onClick = {
+                                selectedIndex = -1
                                 // 更新逻辑为支出图表
                                 selectedOption = "수입 차트" // 更新标题
                                 viewModel.isIncomeSelected = true
@@ -264,6 +266,7 @@ fun ChartPage(
             ) {
                 Button(
                     onClick = {
+                        selectedIndex = -1
                         isYearSelected = false // 切换到月份模式
                         //val monthData = viewModel.monthData[selectedMonth]?.map { it.toDouble() } ?: List(31) { 0.0 }
                         //dataPoints = monthData
@@ -285,6 +288,7 @@ fun ChartPage(
 
                 Button(
                     onClick = {
+                        selectedIndex = -1
                         isYearSelected = true // 切换到年份模式
                         //val yearData = viewModel.yearData[selectedYear]?.map { it.toDouble() } ?: List(12) { 0.0 }
                         //dataPoints = yearData
@@ -313,7 +317,9 @@ fun ChartPage(
                             text = year.toString(),
                             modifier = Modifier
                                 .padding(8.dp)
-                                .clickable { selectedYear = year },
+                                .clickable {
+                                    selectedYear = year
+                                    selectedIndex = -1},
                             color = if (selectedYear == year) Color.Black else Color.Gray
                         )
                     }
@@ -325,7 +331,9 @@ fun ChartPage(
                             text = month,
                             modifier = Modifier
                                 .padding(8.dp)
-                                .clickable { selectedMonth = month },
+                                .clickable {
+                                    selectedMonth = month
+                                    selectedIndex = -1},
                             color = if (selectedMonth == month) Color.Black else Color.Gray
                         )
                     }

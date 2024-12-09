@@ -312,60 +312,59 @@ fun MainPage(
             BottomAppBar(
                 containerColor = Color.Black // 黑色背景
             ) {
-                Spacer(modifier = Modifier.width(60.dp)) // 间距
-
-                // 图表导航按钮
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Row(
+                    modifier = Modifier.fillMaxWidth(), // 占满整个宽度
+                    horizontalArrangement = Arrangement.SpaceEvenly, // 水平方向均匀分布
+                    verticalAlignment = Alignment.CenterVertically // 垂直方向居中对齐
                 ) {
-                    IconButton(onClick = { navController.navigate("chart") }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.chart),
-                            contentDescription = "Graph",
-                            tint = Color.White
+                    // 图表导航按钮
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        IconButton(onClick = { navController.navigate("chart") }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.chart),
+                                contentDescription = "Graph",
+                                tint = Color.White
+                            )
+                        }
+                        Text(
+                            text = "차트", // 图表的文本
+                            color = Color.White
                         )
                     }
-                    Text(
-                        text = "차트", // 图表的文本
-                        color = Color.White
-                    )
-                }
 
-                //Spacer(modifier = Modifier.width(30.dp)) // 间距
-
-                IconButton(
-                    onClick = { navController.navigate("addNewBill") },
-                    modifier = Modifier
-                        .size(200.dp) // 设置IconButton的大小
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AddCircle,
-                        contentDescription = "Add",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(64.dp) // 设置图标大小
-                            .border(2.dp, Color.Gray, shape = CircleShape) // 添加黑色描边，宽度为2dp，形状为圆形
-                    )
-                }
-
-
-                //Spacer(modifier = Modifier.width(30.dp)) // 间距
-
-                // 个人设置按钮
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    IconButton(onClick = { navController.navigate("my") }) {
+                    // 添加新账单按钮
+                    IconButton(
+                        onClick = { navController.navigate("addNewBill") },
+                        modifier = Modifier.size(64.dp) // 设置IconButton的大小
+                    ) {
                         Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = "Setting",
-                            tint = Color.White
+                            imageVector = Icons.Filled.AddCircle,
+                            contentDescription = "Add",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(64.dp) // 设置图标大小
+                                .border(2.dp, Color.Gray, shape = CircleShape) // 添加描边
                         )
                     }
-                    Text(
-                        text = "마이", // 个人的文本
-                        color = Color.White
-                    )
+
+                    // 个人设置按钮
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        IconButton(onClick = { navController.navigate("my") }) {
+                            Icon(
+                                imageVector = Icons.Filled.Person,
+                                contentDescription = "Setting",
+                                tint = Color.White
+                            )
+                        }
+                        Text(
+                            text = "마이", // 个人的文本
+                            color = Color.White
+                        )
+                    }
                 }
             }
         },
